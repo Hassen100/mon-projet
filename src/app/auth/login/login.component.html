@@ -1,0 +1,70 @@
+<div class="auth-wrap">
+  <!-- Background animated grid -->
+  <div class="bg-grid"></div>
+  <div class="glow-orb glow-1"></div>
+  <div class="glow-orb glow-2"></div>
+
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <span class="brand-name">SEO Pulse Board</span>
+    </div>
+
+    <div class="auth-tag">#SEO-IA</div>
+    <h1 class="auth-title">Connexion</h1>
+    <p class="auth-sub">Accédez à votre tableau de bord analytique</p>
+
+    <!-- Error -->
+    <div class="alert-error" *ngIf="error()">
+      <span>⚠ {{ error() }}</span>
+    </div>
+
+    <!-- Demo hint -->
+    <div class="demo-hint">
+      💡 Pas encore de compte ? <a routerLink="/register">Créez-en un</a> ou utilisez un compte existant.
+    </div>
+
+    <!-- Form -->
+    <div class="form-group">
+      <label>Adresse e-mail</label>
+      <div class="input-wrap">
+        <span class="input-icon">✉</span>
+        <input
+          type="email"
+          placeholder="vous@exemple.com"
+          [(ngModel)]="email"
+          (keyup.enter)="submit()"
+          autocomplete="email"
+        />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Mot de passe</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input
+          [type]="showPass() ? 'text' : 'password'"
+          placeholder="••••••••"
+          [(ngModel)]="password"
+          (keyup.enter)="submit()"
+          autocomplete="current-password"
+        />
+        <button class="toggle-pass" type="button" (click)="showPass.set(!showPass())">
+          {{ showPass() ? '🙈' : '👁' }}
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-submit" (click)="submit()" [disabled]="loading()">
+      <span *ngIf="!loading()">Se connecter →</span>
+      <span *ngIf="loading()" class="spinner-inline"></span>
+    </button>
+
+    <p class="auth-switch">
+      Pas encore de compte ?
+      <a routerLink="/register">Créer un compte</a>
+    </p>
+  </div>
+</div>
