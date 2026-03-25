@@ -1,7 +1,9 @@
 import { Component, OnInit, OnDestroy, signal, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
+import { AnalyticsService, OverviewData, TrafficData, PageData } from '../services/analytics.service';
 
 declare const Chart: any;
 
@@ -52,7 +54,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { icon:'📱', title:'Mobile-first indexing', body:'3 pages présentent des éléments non adaptés au mobile. Vérifiez les tableaux et les CTA sur petits écrans.', priority:'p-low', label:'Priorité faible' },
   ];
 
-  constructor(public auth: AuthService) {}
+  constructor(
+    public auth: AuthService, 
+    private http: HttpClient,
+    private analyticsService: AnalyticsService
+  ) {}
 
   ngOnInit() {
     const today = new Date();
@@ -60,6 +66,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.dateEnd   = today.toISOString().slice(0, 10);
     this.dateStart = past.toISOString().slice(0, 10);
     this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
+    
+    // Test backend connection
+    this.analyticsService.healthCheck().subscribe({
+      next: (response) => {
+        console.log('✅ Backend API connected:', response);
+      },
+      error: (error) => {
+        console.error('❌ Backend API connection failed:', error);
+        this.showAlert('Erreur de connexion au backend API', 'error');
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -110,9 +127,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const days = 30;
     const labels = this.genDates(days);
-    const sessions = Array.from({ length: days }, () => this.r(800, 3200));
-    const organic  = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
+    
+    // Load real traffic data from Google Analytics API
+    this.analyticsService.getTrafficData(days).subscribe({
+      next: (trafficData: TrafficData[]) => {
+        const sessions = trafficData.map(d => d.sessions);
+        const organic = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
+        
+        this.createTrafficChart(labels, sessions, organic);
+      },
+      error: (error) => {
+        console.error('Error fetching traffic data:', error);
+        // Fallback to fake data
+        const sessions = Array.from({ length: days }, () => this.r(800, 3200));
+        const organic = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
+        this.createTrafficChart(labels, sessions, organic);
+      }
+    });
 
+    // Create other charts (keywords and bounce)
+    this.createKeywordsChart();
+    this.createBounceChart();
+  }
+
+  createTrafficChart(labels: string[], sessions: number[], organic: number[]) {
     // Traffic
     this.trafficChart?.destroy();
     const tc = document.getElementById('chart-traffic') as HTMLCanvasElement;
@@ -136,7 +174,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     }
+  }
 
+  createKeywordsChart() {
     // Keywords bar
     const kwLabels = ['référencement naturel', 'SEO technique', 'audit SEO', 'netlinking', 'contenu SEO', 'balises meta', 'core web vitals'];
     const kwData   = kwLabels.map(() => this.r(120, 900));
@@ -159,7 +199,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     }
+  }
 
+  createBounceChart() {
     // Bounce doughnut
     this.bounceChart?.destroy();
     const bc = document.getElementById('chart-bounce') as HTMLCanvasElement;
@@ -180,6 +222,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── KPIs ───────────────────────────────────────────────────────────
   updateKPIs() {
+    // Load real data from Google Analytics API
+    this.analyticsService.getOverview().subscribe({
+      next: (data: OverviewData) => {
+        this.kpis.set({ 
+          sessions: data.sessions, 
+          users: data.users, 
+          pageviews: data.pageViews, 
+          bounceRate: (data.bounceRate * 100).toFixed(1) + '%'
+        });
+        
+        // Calculate deltas (mock for now, could be enhanced with historical data)
+        this.kpiDeltas.set({
+          sessions: `▲ ${Math.floor(Math.random() * 15 + 3)}% vs période préc.`,
+          users: `▲ ${Math.floor(Math.random() * 10 + 2)}% vs période préc.`,
+          pageviews: `▲ ${Math.floor(Math.random() * 20 + 5)}% vs période préc.`,
+          bounce: `▼ -${Math.floor(Math.random() * 5 + 1)}% vs période préc.`,
+        });
+      },
+      error: (error) => {
+        console.error('Error fetching overview data:', error);
+        this.showAlert('Erreur lors de la récupération des données Google Analytics', 'error');
+        // Fallback to fake data
+        this.updateKPIsFallback();
+      }
+    });
+  }
+
+  updateKPIsFallback() {
     const sessions  = this.r(12000, 48000);
     const users     = Math.floor(sessions * (.6 + Math.random() * .25));
     const pageviews = Math.floor(sessions * (1.8 + Math.random() * 1.2));
@@ -196,15 +266,41 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Tables ─────────────────────────────────────────────────────────
   updateTables() {
+    // Load real data from Google Analytics API
+    this.analyticsService.getTopPages(10).subscribe({
+      next: (pages: PageData[]) => {
+        const trends: Array<'up'|'down'|'flat'> = ['up', 'up', 'flat', 'down', 'up'];
+        const topPagesData = pages.slice(0, 5).map((page, index) => ({
+          url: page.page,
+          views: page.views,
+          trend: trends[index % trends.length]
+        }));
+        this.topPages.set(topPagesData);
+      },
+      error: (error) => {
+        console.error('Error fetching pages data:', error);
+        // Fallback to fake data
+        this.updateTablesFallback();
+      }
+    });
+
+    // Keywords data (still mock as not available in GA4 API)
+    this.updateKeywordsTable();
+  }
+
+  updateTablesFallback() {
     const trends: Array<'up'|'down'|'flat'> = ['up', 'up', 'flat', 'down', 'up'];
     this.topPages.set([
       { url: '/accueil',        views: this.r(3000, 8000), trend: trends[0] },
       { url: '/services/seo',   views: this.r(1500, 5000), trend: trends[1] },
       { url: '/blog/audit-seo', views: this.r(800, 3000),  trend: trends[2] },
-      { url: '/contact',        views: this.r(600, 2000),  trend: trends[3] },
-      { url: '/tarifs',         views: this.r(400, 1500),  trend: trends[4] },
+      { url: '/contact',        views: this.r(600, 2000), trend: trends[3] },
+      { url: '/tarifs',         views: this.r(400, 1500), trend: trends[4] },
     ]);
+    this.updateKeywordsTable();
+  }
 
+  updateKeywordsTable() {
     this.topKeywords.set([
       { keyword: 'référencement naturel', position: this.r(1, 6),   ctr: (this.r(35, 85) / 10).toFixed(1) + '%' },
       { keyword: 'audit SEO gratuit',     position: this.r(3, 10),  ctr: (this.r(20, 60) / 10).toFixed(1) + '%' },
@@ -236,11 +332,55 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   syncGoogle() {
     this.loading.set(true);
-    setTimeout(() => {
-      this.loading.set(false);
-      this.showAlert('🔄 Synchronisation Google Analytics & Search Console effectuée.', 'info');
-      this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
-    }, 1800);
+    
+    // Load real data from Google Analytics API
+    this.analyticsService.syncAllData().subscribe({
+      next: (response) => {
+        // Update KPIs with real data
+        this.kpis.set({ 
+          sessions: response.overview.sessions, 
+          users: response.overview.users, 
+          pageviews: response.overview.pageViews, 
+          bounceRate: (response.overview.bounceRate * 100).toFixed(1) + '%'
+        });
+        
+        // Update tables with real data
+        const trends: Array<'up'|'down'|'flat'> = ['up', 'up', 'flat', 'down', 'up'];
+        const topPagesData = response.pages.slice(0, 5).map((page, index) => ({
+          url: page.page,
+          views: page.views,
+          trend: trends[index % trends.length]
+        }));
+        this.topPages.set(topPagesData);
+        
+        // Update traffic chart with real data
+        const labels = response.traffic.map(d => {
+          const date = new Date(d.date);
+          return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        });
+        const sessions = response.traffic.map(d => d.sessions);
+        const organic = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
+        
+        this.createTrafficChart(labels, sessions, organic);
+        
+        this.loading.set(false);
+        this.showAlert('🔄 Synchronisation Google Analytics effectuée avec succès!', 'success');
+        this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
+      },
+      error: (error) => {
+        console.error('Error syncing with Google Analytics:', error);
+        this.loading.set(false);
+        this.showAlert('❌ Erreur lors de la synchronisation Google Analytics', 'error');
+        
+        // Fallback to fake data
+        setTimeout(() => {
+          this.updateKPIs();
+          this.initCharts();
+          this.updateTables();
+          this.showAlert('🔄 Utilisation des données de démonstration', 'info');
+        }, 1000);
+      }
+    });
   }
 
   generateAI() {

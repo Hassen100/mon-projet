@@ -1,0 +1,18 @@
+# Django REST Framework Backend for SEO Analytics Dashboard
+
+# Core Django Framework
+django==4.2.7
+djangorestframework==3.14.0
+
+# Google Analytics Integration
+google-analytics-data==0.18.0
+google-auth==2.23.4
+
+# CORS Support for Angular Frontend
+django-cors-headers==4.3.1
+
+# Environment Variables (optional, for production)
+python-decouple==3.8
+
+# Logging and Monitoring
+structlog==23.2.0
