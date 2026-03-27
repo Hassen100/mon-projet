@@ -92,7 +92,7 @@
       <div class="chart-wrap"><canvas id="chart-traffic"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">🔑 Top mots-clés (clics)</div>
+      <div class="chart-title">🔑 Top requêtes organiques (sessions)</div>
       <div class="chart-wrap"><canvas id="chart-keywords"></canvas></div>
     </div>
   </div>
@@ -118,18 +118,16 @@
 
     <!-- Keywords table -->
     <div class="table-card">
-      <div class="table-title">🔍 Mots-clés performants</div>
+      <div class="table-title">🔍 Requêtes (Search Console / GA4)</div>
+      <p class="table-hint" *ngIf="keywordsNote()">{{ keywordsNote() }}</p>
       <table>
         <thead>
-          <tr><th>Mot-clé</th><th>Position</th><th>CTR</th></tr>
+          <tr><th>Requête</th><th>Sessions</th></tr>
         </thead>
         <tbody>
           <tr *ngFor="let k of topKeywords()">
             <td style="font-size:12px">{{ k.keyword }}</td>
-            <td>
-              <span class="pos-badge" [style.color]="posColor(k.position)">#{{ k.position }}</span>
-            </td>
-            <td>{{ k.ctr }}</td>
+            <td>{{ k.sessions | number:'1.0-0' }}</td>
           </tr>
         </tbody>
       </table>
@@ -137,7 +135,7 @@
 
     <!-- Bounce by source -->
     <div class="chart-card">
-      <div class="chart-title">📊 Rebond par source</div>
+      <div class="chart-title">📊 Sessions par canal</div>
       <div class="chart-wrap"><canvas id="chart-bounce"></canvas></div>
     </div>
   </div>

@@ -1,9 +1,13 @@
 import { Component, OnInit, OnDestroy, signal, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
-import { AnalyticsService, OverviewData, TrafficData, PageData } from '../services/analytics.service';
+import {
+  AnalyticsService,
+  OverviewData,
+  TrafficData,
+  PageData
+} from '../services/analytics.service';
 
 declare const Chart: any;
 
@@ -15,72 +19,90 @@ declare const Chart: any;
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
-
-  // User
   user = this.auth.currentUser;
 
-  // Filters
   dateStart = '';
   dateEnd = '';
   pageUrl = '';
   source = 'all';
 
-  // State
   loading = signal(false);
   alertMsg = signal('');
   alertType = signal('');
   lastSync = signal('');
   showAiPanel = signal(false);
+  keywordsNote = signal('');
 
-  // Charts instances
   private trafficChart: any;
   private keywordsChart: any;
-  private bounceChart: any;
+  private channelsChart: any;
 
-  // Table data
   topPages = signal<{ url: string; views: number; trend: string }[]>([]);
-  topKeywords = signal<{ keyword: string; position: number; ctr: string }[]>([]);
+  topKeywords = signal<{ keyword: string; sessions: number }[]>([]);
 
-  // KPIs
   kpis = signal({ sessions: 0, users: 0, pageviews: 0, bounceRate: '0%' });
-  kpiDeltas = signal({ sessions: '', users: '', pageviews: '', bounce: '' });
+  kpiDeltas = signal({ sessions: '—', users: '—', pageviews: '—', bounce: '—' });
 
   aiRecs = [
-    { icon:'📝', title:'Optimiser les balises title', body:'6 pages ont des titres dépassant 60 caractères. Raccourcissez-les pour améliorer le CTR dans les SERP.', priority:'p-high', label:'Priorité haute' },
-    { icon:'🔗', title:'Stratégie de netlinking', body:'Vos pages /services/ manquent de backlinks internes. Ajoutez 3-5 liens depuis vos articles de blog.', priority:'p-high', label:'Priorité haute' },
-    { icon:'⚡', title:'Améliorer le LCP', body:'Le score Core Web Vitals indique un LCP > 2.5s sur mobile. Optimisez les images hero et le lazy loading.', priority:'p-med', label:'Priorité moyenne' },
-    { icon:'📊', title:'Contenu longue traîne', body:'Créez des articles ciblant "audit seo gratuit PME" et "référencement local artisan" (faible concurrence, bon volume).', priority:'p-med', label:'Priorité moyenne' },
-    { icon:'🗺️', title:'Sitemap XML', body:"Votre sitemap n'inclut pas les pages /blog/ récentes. Régénérez-le et soumettez-le à la Search Console.", priority:'p-low', label:'Priorité faible' },
-    { icon:'📱', title:'Mobile-first indexing', body:'3 pages présentent des éléments non adaptés au mobile. Vérifiez les tableaux et les CTA sur petits écrans.', priority:'p-low', label:'Priorité faible' },
+    { icon: '📝', title: 'Optimiser les balises title', body: '6 pages ont des titres dépassant 60 caractères. Raccourcissez-les pour améliorer le CTR dans les SERP.', priority: 'p-high', label: 'Priorité haute' },
+    { icon: '🔗', title: 'Stratégie de netlinking', body: 'Vos pages /services/ manquent de backlinks internes. Ajoutez 3-5 liens depuis vos articles de blog.', priority: 'p-high', label: 'Priorité haute' },
+    { icon: '⚡', title: 'Améliorer le LCP', body: 'Le score Core Web Vitals indique un LCP > 2.5s sur mobile. Optimisez les images hero et le lazy loading.', priority: 'p-med', label: 'Priorité moyenne' },
+    { icon: '📊', title: 'Contenu longue traîne', body: 'Créez des articles ciblant "audit seo gratuit PME" et "référencement local artisan" (faible concurrence, bon volume).', priority: 'p-med', label: 'Priorité moyenne' },
+    { icon: '🗺️', title: 'Sitemap XML', body: "Votre sitemap n'inclut pas les pages /blog/ récentes. Régénérez-le et soumettez-le à la Search Console.", priority: 'p-low', label: 'Priorité faible' },
+    { icon: '📱', title: 'Mobile-first indexing', body: '3 pages présentent des éléments non adaptés au mobile. Vérifiez les tableaux et les CTA sur petits écrans.', priority: 'p-low', label: 'Priorité faible' },
   ];
 
   constructor(
-    public auth: AuthService, 
-    private http: HttpClient,
+    public auth: AuthService,
     private analyticsService: AnalyticsService
   ) {}
 
+  private refreshInterval: ReturnType<typeof setInterval> | undefined;
+  private readonly REFRESH_INTERVAL = 60000;
+
   ngOnInit() {
     const today = new Date();
-    const past  = new Date(); past.setDate(today.getDate() - 30);
-    this.dateEnd   = today.toISOString().slice(0, 10);
+    const past = new Date();
+    past.setDate(today.getDate() - 30);
+    this.dateEnd = today.toISOString().slice(0, 10);
     this.dateStart = past.toISOString().slice(0, 10);
     this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
-    
-    // Test backend connection
+
+    this.startAutoRefresh();
+
     this.analyticsService.healthCheck().subscribe({
       next: (response) => {
-        console.log('✅ Backend API connected:', response);
+        console.log('Backend API:', response);
       },
       error: (error) => {
-        console.error('❌ Backend API connection failed:', error);
-        this.showAlert('Erreur de connexion au backend API', 'error');
+        console.error('Backend API health failed:', error);
+        this.showAlert(
+          'API indisponible : lancez `vercel dev` (port 3000) avec les variables GA, ou vérifiez le déploiement.',
+          'error'
+        );
       }
     });
   }
 
+  ngOnDestroy() {
+    this.trafficChart?.destroy();
+    this.keywordsChart?.destroy();
+    this.channelsChart?.destroy();
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+  }
+
+  startAutoRefresh() {
+    this.refreshInterval = setInterval(() => {
+      this.updateKPIs();
+      this.refreshChartsFromApi();
+      this.updateTables();
+      this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
+    }, this.REFRESH_INTERVAL);
+  }
+
   ngAfterViewInit() {
-    // Load Chart.js then init
     if (typeof Chart !== 'undefined') {
       this.initCharts();
       this.updateKPIs();
@@ -97,61 +119,64 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  ngOnDestroy() {
-    this.trafficChart?.destroy();
-    this.keywordsChart?.destroy();
-    this.bounceChart?.destroy();
-  }
-
-  // ── Helpers ────────────────────────────────────────────────────────
-  private r(a: number, b: number) {
-    return Math.floor(Math.random() * (b - a + 1)) + a;
-  }
-
-  private genDates(n: number): string[] {
-    const dates: string[] = [];
-    const d = new Date();
-    for (let i = n - 1; i >= 0; i--) {
-      const dd = new Date(d);
-      dd.setDate(d.getDate() - i);
-      dates.push(dd.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }));
+  private formatGaDateLabel(raw: string): string {
+    if (raw && raw.length === 8 && /^\d{8}$/.test(raw)) {
+      const y = +raw.slice(0, 4);
+      const m = +raw.slice(4, 6) - 1;
+      const day = +raw.slice(6, 8);
+      return new Date(y, m, day).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
     }
-    return dates;
+    return raw;
   }
 
-  // ── Charts ─────────────────────────────────────────────────────────
   initCharts() {
     Chart.defaults.color = '#8b949e';
     Chart.defaults.borderColor = '#30363d';
     Chart.defaults.font.family = 'DM Sans';
 
     const days = 30;
-    const labels = this.genDates(days);
-    
-    // Load real traffic data from Google Analytics API
     this.analyticsService.getTrafficData(days).subscribe({
       next: (trafficData: TrafficData[]) => {
-        const sessions = trafficData.map(d => d.sessions);
-        const organic = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
-        
+        const labels = trafficData.map((d) => this.formatGaDateLabel(d.date));
+        const sessions = trafficData.map((d) => d.sessions);
+        const organic = trafficData.map((d) => d.organic ?? 0);
         this.createTrafficChart(labels, sessions, organic);
       },
       error: (error) => {
-        console.error('Error fetching traffic data:', error);
-        // Fallback to fake data
-        const sessions = Array.from({ length: days }, () => this.r(800, 3200));
-        const organic = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
-        this.createTrafficChart(labels, sessions, organic);
+        console.error('Traffic:', error);
+        const labels = Array.from({ length: days }, (_, i) => {
+          const dd = new Date();
+          dd.setDate(dd.getDate() - (days - 1 - i));
+          return dd.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        });
+        const zeros = Array(days).fill(0);
+        this.createTrafficChart(labels, zeros, zeros);
       }
     });
 
-    // Create other charts (keywords and bounce)
     this.createKeywordsChart();
-    this.createBounceChart();
+    this.createChannelsChart();
+  }
+
+  /** Recharge graphiques (trafic + mots-clés + canaux) depuis l’API */
+  private refreshChartsFromApi() {
+    const days = 30;
+    this.analyticsService.getTrafficData(days).subscribe({
+      next: (trafficData: TrafficData[]) => {
+        const labels = trafficData.map((d) => this.formatGaDateLabel(d.date));
+        const sessions = trafficData.map((d) => d.sessions);
+        const organic = trafficData.map((d) => d.organic ?? 0);
+        this.createTrafficChart(labels, sessions, organic);
+      },
+      error: () => {
+        /* garde le dernier graphique */
+      }
+    });
+    this.createKeywordsChart();
+    this.createChannelsChart();
   }
 
   createTrafficChart(labels: string[], sessions: number[], organic: number[]) {
-    // Traffic
     this.trafficChart?.destroy();
     const tc = document.getElementById('chart-traffic') as HTMLCanvasElement;
     if (tc) {
@@ -160,12 +185,31 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         data: {
           labels,
           datasets: [
-            { label: 'Sessions', data: sessions, borderColor: '#2ea99b', backgroundColor: 'rgba(46,169,155,.08)', fill: true, tension: 0.45, pointRadius: 0, borderWidth: 2 },
-            { label: 'Organique', data: organic, borderColor: '#3fb950', backgroundColor: 'transparent', tension: 0.45, pointRadius: 0, borderWidth: 1.5, borderDash: [4, 3] }
+            {
+              label: 'Sessions',
+              data: sessions,
+              borderColor: '#2ea99b',
+              backgroundColor: 'rgba(46,169,155,.08)',
+              fill: true,
+              tension: 0.45,
+              pointRadius: 0,
+              borderWidth: 2
+            },
+            {
+              label: 'Organique',
+              data: organic,
+              borderColor: '#3fb950',
+              backgroundColor: 'transparent',
+              tension: 0.45,
+              pointRadius: 0,
+              borderWidth: 1.5,
+              borderDash: [4, 3]
+            }
           ]
         },
         options: {
-          responsive: true, maintainAspectRatio: false,
+          responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } },
           scales: {
             x: { ticks: { maxTicksLimit: 7, font: { size: 11 } }, grid: { color: 'rgba(48,54,61,.4)' } },
@@ -177,140 +221,175 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   createKeywordsChart() {
-    // Keywords bar
-    const kwLabels = ['référencement naturel', 'SEO technique', 'audit SEO', 'netlinking', 'contenu SEO', 'balises meta', 'core web vitals'];
-    const kwData   = kwLabels.map(() => this.r(120, 900));
-    this.keywordsChart?.destroy();
-    const kc = document.getElementById('chart-keywords') as HTMLCanvasElement;
-    if (kc) {
-      this.keywordsChart = new Chart(kc, {
-        type: 'bar',
-        data: {
-          labels: kwLabels,
-          datasets: [{ label: 'Clics', data: kwData, backgroundColor: kwData.map((_, i) => `hsl(${175 + i * 12},55%,${38 + i * 3}%)`), borderRadius: 6, borderSkipped: false }]
-        },
-        options: {
-          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: 'rgba(48,54,61,.4)' }, ticks: { font: { size: 11 } } },
-            y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    this.analyticsService.getKeywords(8).subscribe({
+      next: (res) => {
+        this.keywordsNote.set(res.note || '');
+        const items = res.items || [];
+        this.keywordsChart?.destroy();
+        const kc = document.getElementById('chart-keywords') as HTMLCanvasElement;
+        if (!kc) return;
+
+        if (items.length === 0) {
+          this.keywordsChart = new Chart(kc, {
+            type: 'bar',
+            data: {
+              labels: ['—'],
+              datasets: [{ label: 'Sessions', data: [0], backgroundColor: ['#30363d'], borderRadius: 6, borderSkipped: false }]
+            },
+            options: {
+              indexAxis: 'y',
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { grid: { color: 'rgba(48,54,61,.4)' }, ticks: { font: { size: 11 } } },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+              }
+            }
+          });
+          return;
+        }
+
+        const kwLabels = items.map((i) =>
+          i.keyword.length > 42 ? i.keyword.slice(0, 39) + '…' : i.keyword
+        );
+        const kwData = items.map((i) => i.sessions);
+        this.keywordsChart = new Chart(kc, {
+          type: 'bar',
+          data: {
+            labels: kwLabels,
+            datasets: [
+              {
+                label: 'Sessions',
+                data: kwData,
+                backgroundColor: kwData.map((_, i) => `hsl(${175 + i * 12},55%,${38 + i * 3}%)`),
+                borderRadius: 6,
+                borderSkipped: false
+              }
+            ]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: 'rgba(48,54,61,.4)' }, ticks: { font: { size: 11 } } },
+              y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
           }
-        }
-      });
-    }
-  }
-
-  createBounceChart() {
-    // Bounce doughnut
-    this.bounceChart?.destroy();
-    const bc = document.getElementById('chart-bounce') as HTMLCanvasElement;
-    if (bc) {
-      this.bounceChart = new Chart(bc, {
-        type: 'doughnut',
-        data: {
-          labels: ['Organique', 'Direct', 'Referral', 'Social'],
-          datasets: [{ data: [38, 25, 22, 15], backgroundColor: ['#2ea99b', '#3fb950', '#e3b341', '#f78166'], borderWidth: 0, hoverOffset: 6 }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, cutout: '65%',
-          plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } }
-        }
-      });
-    }
-  }
-
-  // ── KPIs ───────────────────────────────────────────────────────────
-  updateKPIs() {
-    // Load real data from Google Analytics API
-    this.analyticsService.getOverview().subscribe({
-      next: (data: OverviewData) => {
-        this.kpis.set({ 
-          sessions: data.sessions, 
-          users: data.users, 
-          pageviews: data.pageViews, 
-          bounceRate: (data.bounceRate * 100).toFixed(1) + '%'
-        });
-        
-        // Calculate deltas (mock for now, could be enhanced with historical data)
-        this.kpiDeltas.set({
-          sessions: `▲ ${Math.floor(Math.random() * 15 + 3)}% vs période préc.`,
-          users: `▲ ${Math.floor(Math.random() * 10 + 2)}% vs période préc.`,
-          pageviews: `▲ ${Math.floor(Math.random() * 20 + 5)}% vs période préc.`,
-          bounce: `▼ -${Math.floor(Math.random() * 5 + 1)}% vs période préc.`,
         });
       },
-      error: (error) => {
-        console.error('Error fetching overview data:', error);
-        this.showAlert('Erreur lors de la récupération des données Google Analytics', 'error');
-        // Fallback to fake data
-        this.updateKPIsFallback();
+      error: (err) => {
+        console.error('Keywords chart:', err);
+        this.keywordsNote.set('Données requêtes indisponibles.');
       }
     });
   }
 
-  updateKPIsFallback() {
-    const sessions  = this.r(12000, 48000);
-    const users     = Math.floor(sessions * (.6 + Math.random() * .25));
-    const pageviews = Math.floor(sessions * (1.8 + Math.random() * 1.2));
-    const bounce    = this.r(28, 62);
+  createChannelsChart() {
+    this.analyticsService.getChannels().subscribe({
+      next: (res) => {
+        const items = res.items || [];
+        this.channelsChart?.destroy();
+        const bc = document.getElementById('chart-bounce') as HTMLCanvasElement;
+        if (!bc) return;
 
-    this.kpis.set({ sessions, users, pageviews, bounceRate: bounce + '%' });
-    this.kpiDeltas.set({
-      sessions: `▲ +${this.r(4, 18)}% vs période préc.`,
-      users:    `▲ +${this.r(2, 12)}% vs période préc.`,
-      pageviews:`▲ +${this.r(5, 22)}% vs période préc.`,
-      bounce:   `▼ -${this.r(1, 6)}% vs période préc.`,
+        const palette = ['#2ea99b', '#3fb950', '#e3b341', '#f78166', '#a371f7', '#79c0ff', '#ffa657', '#ff7b72'];
+        if (items.length === 0) {
+          this.channelsChart = new Chart(bc, {
+            type: 'doughnut',
+            data: {
+              labels: ['—'],
+              datasets: [{ data: [1], backgroundColor: ['#30363d'], borderWidth: 0, hoverOffset: 6 }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '65%',
+              plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } }
+            }
+          });
+          return;
+        }
+
+        const labels = items.map((i) => i.channel);
+        const data = items.map((i) => i.sessions);
+        const colors = items.map((_, i) => palette[i % palette.length]);
+
+        this.channelsChart = new Chart(bc, {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 6 }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: { legend: { position: 'right', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } } }
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Channels chart:', err);
+      }
     });
   }
 
-  // ── Tables ─────────────────────────────────────────────────────────
+  updateKPIs() {
+    this.analyticsService.getOverview().subscribe({
+      next: (data: OverviewData) => {
+        this.kpis.set({
+          sessions: data.sessions,
+          users: data.users,
+          pageviews: data.pageViews,
+          bounceRate: (data.bounceRate * 100).toFixed(1) + '%'
+        });
+        this.kpiDeltas.set({
+          sessions: '—',
+          users: '—',
+          pageviews: '—',
+          bounce: '—'
+        });
+      },
+      error: (error) => {
+        console.error('Overview:', error);
+        this.showAlert('Données GA indisponibles (vérifiez les variables d’environnement et le compte de service).', 'error');
+        this.kpis.set({ sessions: 0, users: 0, pageviews: 0, bounceRate: '0%' });
+        this.kpiDeltas.set({ sessions: '—', users: '—', pageviews: '—', bounce: '—' });
+      }
+    });
+  }
+
   updateTables() {
-    // Load real data from Google Analytics API
     this.analyticsService.getTopPages(10).subscribe({
       next: (pages: PageData[]) => {
-        const trends: Array<'up'|'down'|'flat'> = ['up', 'up', 'flat', 'down', 'up'];
-        const topPagesData = pages.slice(0, 5).map((page, index) => ({
+        const topPagesData = pages.slice(0, 5).map((page) => ({
           url: page.page,
           views: page.views,
-          trend: trends[index % trends.length]
+          trend: 'flat'
         }));
         this.topPages.set(topPagesData);
       },
       error: (error) => {
-        console.error('Error fetching pages data:', error);
-        // Fallback to fake data
-        this.updateTablesFallback();
+        console.error('Pages:', error);
+        this.showAlert('Impossible de charger les pages (API).', 'error');
+        this.topPages.set([]);
       }
     });
 
-    // Keywords data (still mock as not available in GA4 API)
-    this.updateKeywordsTable();
+    this.analyticsService.getKeywords(10).subscribe({
+      next: (res) => {
+        this.keywordsNote.set(res.note || '');
+        this.topKeywords.set(res.items || []);
+      },
+      error: () => {
+        this.topKeywords.set([]);
+      }
+    });
   }
 
-  updateTablesFallback() {
-    const trends: Array<'up'|'down'|'flat'> = ['up', 'up', 'flat', 'down', 'up'];
-    this.topPages.set([
-      { url: '/accueil',        views: this.r(3000, 8000), trend: trends[0] },
-      { url: '/services/seo',   views: this.r(1500, 5000), trend: trends[1] },
-      { url: '/blog/audit-seo', views: this.r(800, 3000),  trend: trends[2] },
-      { url: '/contact',        views: this.r(600, 2000), trend: trends[3] },
-      { url: '/tarifs',         views: this.r(400, 1500), trend: trends[4] },
-    ]);
-    this.updateKeywordsTable();
-  }
-
-  updateKeywordsTable() {
-    this.topKeywords.set([
-      { keyword: 'référencement naturel', position: this.r(1, 6),   ctr: (this.r(35, 85) / 10).toFixed(1) + '%' },
-      { keyword: 'audit SEO gratuit',     position: this.r(3, 10),  ctr: (this.r(20, 60) / 10).toFixed(1) + '%' },
-      { keyword: 'core web vitals',       position: this.r(5, 15),  ctr: (this.r(15, 45) / 10).toFixed(1) + '%' },
-      { keyword: 'balises meta SEO',      position: this.r(8, 20),  ctr: (this.r(10, 40) / 10).toFixed(1) + '%' },
-      { keyword: 'netlinking stratégie',  position: this.r(10, 30), ctr: (this.r(8, 30)  / 10).toFixed(1) + '%' },
-    ]);
-  }
-
-  // ── Buttons ────────────────────────────────────────────────────────
   applyFilters() {
     this.loading.set(true);
     setTimeout(() => {
@@ -318,67 +397,66 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.initCharts();
       this.updateTables();
       this.loading.set(false);
-      this.showAlert('Données mises à jour avec succès.', 'success');
+      this.showAlert('Données actualisées.', 'success');
       this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
-    }, 1200);
+    }, 400);
   }
 
   verifyUrl() {
     const url = this.pageUrl.trim();
-    if (!url) { this.showAlert('Veuillez saisir une URL.', 'error'); return; }
-    try { new URL(url); this.showAlert('✓ URL valide et accessible.', 'success'); }
-    catch { this.showAlert('✗ URL invalide. Format: https://example.com/page', 'error'); }
+    if (!url) {
+      this.showAlert('Veuillez saisir une URL.', 'error');
+      return;
+    }
+    try {
+      new URL(url);
+      this.showAlert('✓ URL valide et accessible.', 'success');
+    } catch {
+      this.showAlert('✗ URL invalide. Format: https://example.com/page', 'error');
+    }
   }
 
   syncGoogle() {
     this.loading.set(true);
-    
-    // Load real data from Google Analytics API
+
     this.analyticsService.syncAllData().subscribe({
       next: (response) => {
-        // Update KPIs with real data
-        this.kpis.set({ 
-          sessions: response.overview.sessions, 
-          users: response.overview.users, 
-          pageviews: response.overview.pageViews, 
+        this.kpis.set({
+          sessions: response.overview.sessions,
+          users: response.overview.users,
+          pageviews: response.overview.pageViews,
           bounceRate: (response.overview.bounceRate * 100).toFixed(1) + '%'
         });
-        
-        // Update tables with real data
-        const trends: Array<'up'|'down'|'flat'> = ['up', 'up', 'flat', 'down', 'up'];
-        const topPagesData = response.pages.slice(0, 5).map((page, index) => ({
+
+        const topPagesData = response.pages.slice(0, 5).map((page) => ({
           url: page.page,
           views: page.views,
-          trend: trends[index % trends.length]
+          trend: 'flat'
         }));
         this.topPages.set(topPagesData);
-        
-        // Update traffic chart with real data
-        const labels = response.traffic.map(d => {
-          const date = new Date(d.date);
-          return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-        });
-        const sessions = response.traffic.map(d => d.sessions);
-        const organic = sessions.map(s => Math.floor(s * (.55 + Math.random() * .2)));
-        
+
+        const labels = response.traffic.map((d) => this.formatGaDateLabel(d.date));
+        const sessions = response.traffic.map((d) => d.sessions);
+        const organic = response.traffic.map((d) => d.organic ?? 0);
         this.createTrafficChart(labels, sessions, organic);
-        
+
+        this.createKeywordsChart();
+        this.createChannelsChart();
+        this.analyticsService.getKeywords(10).subscribe({
+          next: (r) => {
+            this.keywordsNote.set(r.note || '');
+            this.topKeywords.set(r.items || []);
+          }
+        });
+
         this.loading.set(false);
-        this.showAlert('🔄 Synchronisation Google Analytics effectuée avec succès!', 'success');
+        this.showAlert('Synchronisation Google Analytics terminée.', 'success');
         this.lastSync.set('Dernière sync: ' + new Date().toLocaleTimeString('fr-FR'));
       },
       error: (error) => {
-        console.error('Error syncing with Google Analytics:', error);
+        console.error('Sync:', error);
         this.loading.set(false);
-        this.showAlert('❌ Erreur lors de la synchronisation Google Analytics', 'error');
-        
-        // Fallback to fake data
-        setTimeout(() => {
-          this.updateKPIs();
-          this.initCharts();
-          this.updateTables();
-          this.showAlert('🔄 Utilisation des données de démonstration', 'info');
-        }, 1000);
+        this.showAlert('Échec de la synchronisation (API / credentials GA).', 'error');
       }
     });
   }
@@ -388,12 +466,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => {
       this.loading.set(false);
       this.showAiPanel.set(true);
-      this.showAlert('✨ Recommandations IA générées avec succès.', 'success');
+      this.showAlert('✨ Recommandations IA affichées.', 'success');
       setTimeout(() => document.getElementById('ai-panel')?.scrollIntoView({ behavior: 'smooth' }), 100);
     }, 2200);
   }
 
-  logout() { this.auth.logout(); }
+  logout() {
+    this.auth.logout();
+  }
 
   showAlert(msg: string, type: string) {
     this.alertMsg.set(msg);
@@ -406,8 +486,5 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   trendLabel(t: string) {
     return t === 'up' ? '↑ Hausse' : t === 'down' ? '↓ Baisse' : '→ Stable';
-  }
-  posColor(pos: number) {
-    return pos <= 5 ? 'var(--accent)' : pos <= 15 ? 'var(--yellow)' : 'var(--warn)';
   }
 }
