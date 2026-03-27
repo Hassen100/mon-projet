@@ -25,6 +25,9 @@
 
   <!-- Filter bar -->
   <div class="filter-bar">
+    <div class="alert alert-warning setup-banner" *ngIf="gaSetupWarning()">
+      {{ gaSetupWarning() }}
+    </div>
     <div class="filter-grid">
       <div class="field">
         <label>Début</label>

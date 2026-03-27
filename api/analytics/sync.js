@@ -111,9 +111,25 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Analytics Sync Error:', error);
+    const msg = error && error.message ? String(error.message) : String(error);
+    let hint = '';
+    if (msg.includes('GA credentials missing') || msg.includes('credentials missing')) {
+      hint =
+        'Sur Vercel : Project → Settings → Environment Variables. Ajoutez GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY (clé complète avec \\n), et GA_PROPERTY_ID. Puis redéployez.';
+    } else if (msg.includes('PERMISSION_DENIED') || /permission/i.test(msg)) {
+      hint =
+        'Dans Google Analytics : Admin → Accès à la propriété → Ajouter des utilisateurs → e-mail du compte de service (…@….iam.gserviceaccount.com) avec rôle Lecteur.';
+    } else if (msg.includes('NOT_FOUND') || msg.includes('not found')) {
+      hint =
+        'Vérifiez GA_PROPERTY_ID : c’est l’ID numérique GA4 (ex. 123456789), visible dans Admin → Détails de la propriété.';
+    } else if (msg.includes('invalid_grant') || msg.includes('Invalid JWT')) {
+      hint =
+        'Clé privée invalide ou expirée : régénérez une clé JSON dans Google Cloud → IAM → compte de service → Clés, puis mettez à jour GOOGLE_PRIVATE_KEY sur Vercel.';
+    }
     return res.status(500).json({
       error: 'Failed to sync analytics data',
-      details: error.message
+      details: msg,
+      hint: hint || undefined
     });
   }
 };

@@ -32,6 +32,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   lastSync = signal('');
   showAiPanel = signal(false);
   keywordsNote = signal('');
+  /** Message si l’API signale l’absence de variables GA sur le serveur */
+  gaSetupWarning = signal('');
 
   private trafficChart: any;
   private keywordsChart: any;
@@ -73,15 +75,58 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.analyticsService.healthCheck().subscribe({
       next: (response) => {
         console.log('Backend API:', response);
+        const credsOk = response['ga_credentials_configured'] === true;
+        this.gaSetupWarning.set(
+          credsOk
+            ? ''
+            : 'Configuration GA manquante sur le serveur : ajoutez GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY et GA_PROPERTY_ID dans Vercel (Environment Variables), puis redéployez.'
+        );
       },
       error: (error) => {
         console.error('Backend API health failed:', error);
+        this.gaSetupWarning.set('');
         this.showAlert(
-          'API indisponible : lancez `vercel dev` (port 3000) avec les variables GA, ou vérifiez le déploiement.',
-          'error'
+          'API indisponible : vérifiez le déploiement Vercel ou lancez `vercel dev` (port 3000) en local.',
+          'error',
+          8000
         );
       }
     });
+  }
+
+  /** Extrait le message utile du corps d’erreur HTTP (API Google / Vercel). */
+  private formatHttpError(err: unknown): string {
+    if (err && typeof err === 'object' && 'error' in err) {
+      const httpErr = err as {
+        error?: unknown;
+        status?: number;
+        message?: string;
+      };
+      if (httpErr.status === 0) {
+        return 'Impossible de joindre le serveur (réseau ou URL API).';
+      }
+      const body = httpErr.error;
+      if (typeof body === 'string') return body;
+      if (body && typeof body === 'object') {
+        const b = body as { details?: string; error?: string; hint?: string };
+        const parts: string[] = [];
+        if (b.hint) parts.push(b.hint);
+        if (b.details) parts.push(b.details);
+        if (
+          b.error &&
+          typeof b.error === 'string' &&
+          b.error !== 'Failed to sync analytics data' &&
+          b.error !== 'Failed to fetch analytics data'
+        ) {
+          parts.push(b.error);
+        }
+        if (parts.length) return parts.join(' ');
+      }
+    }
+    if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+      return (err as { message: string }).message;
+    }
+    return 'Erreur inconnue.';
   }
 
   ngOnDestroy() {
@@ -456,7 +501,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       error: (error) => {
         console.error('Sync:', error);
         this.loading.set(false);
-        this.showAlert('Échec de la synchronisation (API / credentials GA).', 'error');
+        const detail = this.formatHttpError(error);
+        this.showAlert(
+          'Synchronisation Google Analytics impossible. ' + detail,
+          'error',
+          12000
+        );
       }
     });
   }
@@ -475,10 +525,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.auth.logout();
   }
 
-  showAlert(msg: string, type: string) {
+  showAlert(msg: string, type: string, durationMs = 4000) {
     this.alertMsg.set(msg);
     this.alertType.set(type);
-    setTimeout(() => this.alertMsg.set(''), 4000);
+    setTimeout(() => this.alertMsg.set(''), durationMs);
   }
 
   trendBadge(t: string) {
