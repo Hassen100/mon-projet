@@ -1,5 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
 
 export interface User {
   name: string;
@@ -9,63 +12,116 @@ export interface User {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly USERS_KEY = 'seo_ia_users';
-  private readonly SESSION_KEY = 'seo_ia_session';
+  /** État réactif (RxJS) — même instance utilisateur que `currentUser` */
+  readonly user$ = new BehaviorSubject<User | null>(null);
 
-  currentUser = signal<User | null>(this.loadSession());
+  currentUser = signal<User | null>(null);
 
-  constructor(private router: Router) {}
+  constructor(private router: Router) {
+    void this.hydrateFromSession();
 
-  private loadSession(): User | null {
-    try {
-      const s = sessionStorage.getItem(this.SESSION_KEY);
-      return s ? JSON.parse(s) : null;
-    } catch { return null; }
+    supabase.auth.onAuthStateChange((_event, session) => {
+      const mapped = this.mapSupabaseUser(session?.user ?? null);
+      this.currentUser.set(mapped);
+      this.user$.next(mapped);
+    });
   }
 
-  private getUsers(): Record<string, { password: string; name: string; email: string }> {
-    try {
-      const u = localStorage.getItem(this.USERS_KEY);
-      return u ? JSON.parse(u) : {};
-    } catch { return {}; }
+  private mapSupabaseUser(u: SupabaseUser | null): User | null {
+    if (!u?.email) return null;
+    const meta = u.user_metadata as Record<string, string | undefined> | undefined;
+    const name =
+      meta?.['name'] ||
+      meta?.['full_name'] ||
+      u.email.split('@')[0] ||
+      'Utilisateur';
+    return {
+      name,
+      email: u.email,
+      avatar: name.charAt(0).toUpperCase()
+    };
   }
 
-  private saveUsers(users: Record<string, any>): void {
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-  }
-
-  register(name: string, email: string, password: string): { ok: boolean; error?: string } {
-    const users = this.getUsers();
-    if (users[email]) return { ok: false, error: 'Cet email est déjà utilisé.' };
-
-    users[email] = { password, name, email };
-    this.saveUsers(users);
-
-    const user: User = { name, email, avatar: name.charAt(0).toUpperCase() };
-    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(user));
-    this.currentUser.set(user);
-    return { ok: true };
-  }
-
-  login(email: string, password: string): { ok: boolean; error?: string } {
-    const users = this.getUsers();
-    const found = users[email];
-    if (!found) return { ok: false, error: 'Email introuvable.' };
-    if (found.password !== password) return { ok: false, error: 'Mot de passe incorrect.' };
-
-    const user: User = { name: found.name, email, avatar: found.name.charAt(0).toUpperCase() };
-    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(user));
-    this.currentUser.set(user);
-    return { ok: true };
-  }
-
-  logout(): void {
-    sessionStorage.removeItem(this.SESSION_KEY);
-    this.currentUser.set(null);
-    this.router.navigate(['/login']);
+  private async hydrateFromSession(): Promise<void> {
+    const { data } = await supabase.auth.getSession();
+    const mapped = this.mapSupabaseUser(data.session?.user ?? null);
+    this.currentUser.set(mapped);
+    this.user$.next(mapped);
   }
 
   isLoggedIn(): boolean {
     return this.currentUser() !== null;
+  }
+
+  /** Pour le guard : vérifie la session auprès de Supabase (fiable après refresh). */
+  async isSessionValid(): Promise<boolean> {
+    const { data } = await supabase.auth.getSession();
+    return !!data.session?.user;
+  }
+
+  async signUp(
+    name: string,
+    email: string,
+    password: string
+  ): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, full_name: name }
+      }
+    });
+    if (error) {
+      return { ok: false, error: this.translateAuthError(error.message) };
+    }
+    if (data.user && !data.session) {
+      return {
+        ok: false,
+        error:
+          'Compte créé. Confirmez votre e-mail (lien envoyé par Supabase) avant de vous connecter.'
+      };
+    }
+    if (data.session?.user) {
+      const mapped = this.mapSupabaseUser(data.session.user);
+      this.currentUser.set(mapped);
+      this.user$.next(mapped);
+    }
+    return { ok: true };
+  }
+
+  async login(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      return { ok: false, error: this.translateAuthError(error.message) };
+    }
+    if (data.session?.user) {
+      const mapped = this.mapSupabaseUser(data.session.user);
+      this.currentUser.set(mapped);
+      this.user$.next(mapped);
+    }
+    return { ok: true };
+  }
+
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
+    this.currentUser.set(null);
+    this.user$.next(null);
+    void this.router.navigate(['/login']);
+  }
+
+  async getUser() {
+    return supabase.auth.getUser();
+  }
+
+  async getSession() {
+    return supabase.auth.getSession();
+  }
+
+  private translateAuthError(msg: string): string {
+    const m = msg.toLowerCase();
+    if (m.includes('invalid login credentials')) return 'E-mail ou mot de passe incorrect.';
+    if (m.includes('email not confirmed')) return 'Confirmez votre adresse e-mail avant de vous connecter.';
+    if (m.includes('user already registered')) return 'Cet e-mail est déjà utilisé.';
+    return msg;
   }
 }
