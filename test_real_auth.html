@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Authentification Réelle</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Authentification Supabase avec VRAIE clé</h1>
+    
+    <div>
+        <h2>Test de connexion</h2>
+        <input type="email" id="email" placeholder="Email" value="test@test.com" style="width: 300px; padding: 10px; margin: 5px;"><br>
+        <input type="password" id="password" placeholder="Password" value="123456" style="width: 300px; padding: 10px; margin: 5px;"><br>
+        <button onclick="testLogin()" style="padding: 10px 20px; margin: 5px;">Se connecter</button>
+        <button onclick="checkSession()" style="padding: 10px 20px; margin: 5px;">Vérifier session</button>
+        <button onclick="clearSession()" style="padding: 10px 20px; margin: 5px;">Effacer session</button>
+    </div>
+    
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap;"></div>
+    
+    <script>
+        // Utilise EXACTEMENT la même clé que votre projet Angular
+        const supabaseUrl = 'https://tmehgvdakyaekvhltsly.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtZWhndmRha3lhZWt2aGx0c2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTA2NTgsImV4cCI6MjA5MDI4NjY1OH0.eyaf6WTA3cVARojQ4p61AnF2HNu00hh4oZsdHGpU_cY';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        function log(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            console.log(message);
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('🔄 Tentative de connexion avec: ' + email);
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                log('📊 Résultat connexion: ' + JSON.stringify({ data, error }, null, 2));
+                
+                if (error) {
+                    log('❌ Erreur connexion: ' + error.message);
+                } else {
+                    log('✅ Connexion réussie!');
+                    log('📱 Session: ' + JSON.stringify(data.session, null, 2));
+                    log('👤 User: ' + JSON.stringify(data.user, null, 2));
+                    
+                    // Vérifier immédiatement la session
+                    setTimeout(checkSession, 1000);
+                }
+            } catch (err) {
+                log('❌ Erreur inattendue: ' + err.message);
+            }
+        }
+        
+        async function checkSession() {
+            log('🔍 Vérification session...');
+            
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                
+                log('📊 Résultat session: ' + JSON.stringify({ data, error }, null, 2));
+                
+                if (data.session) {
+                    log('✅ Session active: ' + data.session.user.email);
+                } else {
+                    log('❌ Aucune session active');
+                }
+            } catch (err) {
+                log('❌ Erreur vérification session: ' + err.message);
+            }
+        }
+        
+        async function clearSession() {
+            log('🗑️ Effacement session...');
+            
+            try {
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    log('❌ Erreur déconnexion: ' + error.message);
+                } else {
+                    log('✅ Session effacée');
+                }
+                
+                setTimeout(checkSession, 500);
+            } catch (err) {
+                log('❌ Erreur inattendue: ' + err.message);
+            }
+        }
+        
+        // Écouter les changements d'auth
+        supabase.auth.onAuthStateChange((event, session) => {
+            log('🔄 Changement état auth: ' + event);
+            if (session) {
+                log('📱 Nouvelle session: ' + session.user.email);
+            } else {
+                log('❌ Session terminée');
+            }
+        });
+        
+        // Vérifier la session au démarrage
+        checkSession();
+        
+        log('🚀 Test authentification prêt');
+        log('🔑 URL: ' + supabaseUrl);
+        log('🔑 Clé: ' + supabaseKey.substring(0, 20) + '...');
+    </script>
+</body>
+</html>

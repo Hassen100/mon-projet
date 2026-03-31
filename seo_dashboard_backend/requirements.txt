@@ -11,6 +11,15 @@ google-auth==2.23.4
 # CORS Support for Angular Frontend
 django-cors-headers==4.3.1
 
+# MySQL Database Connector
+mysqlclient==2.2.0
+
+# Image handling
+Pillow==10.0.1
+
+# JWT Authentication
+djangorestframework-simplejwt==5.3.0
+
 # Environment Variables (optional, for production)
 python-decouple==3.8
 

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(vercel:*)",
+      "Bash(curl -s https://dashboard-seo-mu.vercel.app)",
+      "Bash(curl -s https://dashboard-seo-mu.vercel.app/login)",
+      "Bash(curl:*)"
+    ]
+  }
+}

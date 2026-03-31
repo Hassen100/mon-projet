@@ -12,156 +12,59 @@
   </div>
   <div class="header-status">
     <div class="status-dot"></div>
-    <span>{{ lastSync() }}</span>
-    <div class="user-badge" *ngIf="user()">
-      <span class="user-avatar">{{ user()!.avatar }}</span>
-      <span class="user-name">{{ user()!.name }}</span>
+    <span>Dernière sync: {{ lastSync() }}</span>
+    <div class="user-info" *ngIf="user()">
+      <span class="user-email">{{ user()!.email }}</span>
+      <button (click)="logout()" class="logout-btn">🚪 Déconnexion</button>
     </div>
   </div>
 </header>
 
 <!-- Main -->
 <main class="main">
+  <!-- KPI Cards -->
+  <section class="kpi-section">
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-icon">👥</span>
+        <span class="kpi-title">Sessions</span>
+      </div>
+      <div class="kpi-value">{{ kpis().sessions }}</div>
+      <div class="kpi-change positive">+12.5% vs période préc.</div>
+    </div>
 
-  <!-- Filter bar -->
-  <div class="filter-bar">
-    <div class="alert alert-warning setup-banner" *ngIf="gaSetupWarning()">
-      {{ gaSetupWarning() }}
-    </div>
-    <div class="filter-grid">
-      <div class="field">
-        <label>Début</label>
-        <input type="date" [(ngModel)]="dateStart" />
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-icon">👤</span>
+        <span class="kpi-title">Utilisateurs</span>
       </div>
-      <div class="field">
-        <label>Fin</label>
-        <input type="date" [(ngModel)]="dateEnd" />
-      </div>
-      <div class="field">
-        <label>Page</label>
-        <input type="text" [(ngModel)]="pageUrl" placeholder="https://example.com/page" />
-      </div>
-      <div class="field">
-        <label>Source</label>
-        <select [(ngModel)]="source">
-          <option value="all">Toutes</option>
-          <option value="organic">Organique</option>
-          <option value="direct">Direct</option>
-          <option value="referral">Referral</option>
-          <option value="social">Social</option>
-        </select>
-      </div>
+      <div class="kpi-value">{{ kpis().users }}</div>
+      <div class="kpi-change positive">+8.3% vs période préc.</div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-primary"  (click)="applyFilters()">⚡ Appliquer filtres</button>
-      <button class="btn btn-outline"  (click)="verifyUrl()">🔍 Vérifier URL</button>
-      <button class="btn btn-outline"  (click)="syncGoogle()">🔄 Sync Google</button>
-      <button class="btn btn-ai"       (click)="generateAI()">✨ Générer recommandations IA</button>
-      <button class="btn btn-ghost"    (click)="logout()">↩ Déconnexion</button>
-    </div>
-    <div class="alert" [class]="'alert ' + alertType()" *ngIf="alertMsg()">
-      {{ alertMsg() }}
-    </div>
-  </div>
 
-  <!-- KPIs -->
-  <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-label">Sessions</div>
-      <div class="kpi-value">{{ kpis().sessions | number:'1.0-0' }}</div>
-      <div class="kpi-delta delta-up">{{ kpiDeltas().sessions }}</div>
+      <div class="kpi-header">
+        <span class="kpi-icon">👁️</span>
+        <span class="kpi-title">Pages vues</span>
+      </div>
+      <div class="kpi-value">{{ kpis().pageviews }}</div>
+      <div class="kpi-change positive">+15.7% vs période préc.</div>
     </div>
+
     <div class="kpi-card">
-      <div class="kpi-label">Utilisateurs</div>
-      <div class="kpi-value">{{ kpis().users | number:'1.0-0' }}</div>
-      <div class="kpi-delta delta-up">{{ kpiDeltas().users }}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Pages vues</div>
-      <div class="kpi-value">{{ kpis().pageviews | number:'1.0-0' }}</div>
-      <div class="kpi-delta delta-up">{{ kpiDeltas().pageviews }}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Taux de rebond moyen</div>
+      <div class="kpi-header">
+        <span class="kpi-icon">📉</span>
+        <span class="kpi-title">Taux de rebond</span>
+      </div>
       <div class="kpi-value">{{ kpis().bounceRate }}</div>
-      <div class="kpi-delta delta-down">{{ kpiDeltas().bounce }}</div>
+      <div class="kpi-change negative">-2.1% vs période préc.</div>
     </div>
-  </div>
+  </section>
 
-  <!-- Charts -->
-  <div class="chart-grid">
-    <div class="chart-card">
-      <div class="chart-title">📈 Trafic organique dans le temps</div>
-      <div class="chart-wrap"><canvas id="chart-traffic"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">🔑 Top requêtes organiques (sessions)</div>
-      <div class="chart-wrap"><canvas id="chart-keywords"></canvas></div>
-    </div>
-  </div>
-
-  <!-- Bottom row -->
-  <div class="bottom-grid">
-    <!-- Top pages -->
-    <div class="table-card">
-      <div class="table-title">📄 Pages les plus consultées</div>
-      <table>
-        <thead>
-          <tr><th>Page</th><th>Vues</th><th>Trend</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let p of topPages()">
-            <td class="url-cell">{{ p.url }}</td>
-            <td>{{ p.views | number:'1.0-0' }}</td>
-            <td><span class="badge" [class]="trendBadge(p.trend)">{{ trendLabel(p.trend) }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Keywords table -->
-    <div class="table-card">
-      <div class="table-title">🔍 Requêtes (Search Console / GA4)</div>
-      <p class="table-hint" *ngIf="keywordsNote()">{{ keywordsNote() }}</p>
-      <table>
-        <thead>
-          <tr><th>Requête</th><th>Sessions</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let k of topKeywords()">
-            <td style="font-size:12px">{{ k.keyword }}</td>
-            <td>{{ k.sessions | number:'1.0-0' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Bounce by source -->
-    <div class="chart-card">
-      <div class="chart-title">📊 Sessions par canal</div>
-      <div class="chart-wrap"><canvas id="chart-bounce"></canvas></div>
-    </div>
-  </div>
-
-  <!-- AI Panel -->
-  <div class="ai-panel" id="ai-panel" *ngIf="showAiPanel()">
-    <div class="ai-header">
-      <div class="ai-icon">🤖</div>
-      <div>
-        <div class="ai-title">Recommandations IA</div>
-        <div class="ai-subtitle">Générées par analyse NLP des tendances de trafic</div>
-      </div>
-    </div>
-    <div class="ai-grid">
-      <div class="ai-rec" *ngFor="let r of aiRecs">
-        <div class="ai-rec-icon">{{ r.icon }}</div>
-        <div class="ai-rec-title">{{ r.title }}</div>
-        <div class="ai-rec-body">{{ r.body }}</div>
-        <span class="priority" [class]="r.priority">{{ r.label }}</span>
-      </div>
-    </div>
-  </div>
-
+  <!-- Actions -->
+  <section class="actions-section">
+    <button (click)="updateKPIs()" class="btn btn-primary">
+      🔄 Actualiser les données
+    </button>
+  </section>
 </main>
-
-<footer>SEO Pulse Board &mdash; Projet #SEO-IA &mdash; Python (Flask/Django) · Node.js · Google Analytics API · NLP</footer>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supabase</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Supabase Connection</h1>
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://tmehgvdakyaekvhltsly.supabase.co';
+        const supabaseKey = 'sb_publishable_3yhkfegjCrpZmzlWhoYt7g_pGiKmmgO';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                // Test de connexion
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: 'test@example.com',
+                    password: 'test123456'
+                });
+                
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Erreur: ${error.message}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: green;">Connexion réussie: ${JSON.stringify(data)}</p>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<p style="color: red;">Erreur: ${err.message}</p>`;
+            }
+        }
+        
+        testConnection();
+    </script>
+</body>
+</html>

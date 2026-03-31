@@ -1,0 +1,51 @@
+<div class="login-container">
+  <div class="login-card">
+    <h2>🔐 Connexion Dashboard SEO</h2>
+    
+    <form (ngSubmit)="login()">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          [(ngModel)]="email" 
+          required 
+          placeholder="votre@email.com"
+          class="form-control"
+        >
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input 
+          type="password" 
+          id="password" 
+          [(ngModel)]="password" 
+          required 
+          placeholder="••••••••"
+          class="form-control"
+        >
+      </div>
+      
+      <button 
+        type="submit" 
+        [disabled]="loading || !email || !password"
+        class="btn btn-primary"
+      >
+        <span *ngIf="loading">🔄 Connexion...</span>
+        <span *ngIf="!loading">🚀 Se connecter</span>
+      </button>
+    </form>
+    
+    <div class="signup-section">
+      <p>Pas encore de compte ?</p>
+      <button 
+        (click)="signUp()" 
+        [disabled]="loading || !email || !password"
+        class="btn btn-secondary"
+      >
+        📝 Créer un compte
+      </button>
+    </div>
+  </div>
+</div>
