@@ -1,6 +1,43 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "version": 2,
+  "name": "seo-dashboard",
+  "builds": [
+    {
+      "src": "seo_dashboard_backend/wsgi.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/seo-dashboard"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/seo_dashboard_backend/wsgi.py"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/seo_dashboard_backend/wsgi.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/seo_dashboard_backend/wsgi.py"
+    }
+  ],
+  "env": {
+    "DJANGO_SETTINGS_MODULE": "config.settings.production"
+  },
+  "functions": {
+    "seo_dashboard_backend/wsgi.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "installCommand": "pip install -r seo_dashboard_backend/requirements.txt",
+  "buildCommand": "cd seo_dashboard_backend && python manage.py collectstatic --noinput",
+  "outputDirectory": "seo_dashboard_backend/staticfiles",
+  "framework": "django"
 }
