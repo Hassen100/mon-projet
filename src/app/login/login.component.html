@@ -1,13 +1,16 @@
 <div class="login-container">
   <div class="login-card">
-    <h2>🔐 Connexion Dashboard SEO</h2>
+    <h2 *ngIf="isLoginMode">🔐 Connexion Dashboard SEO</h2>
+    <h2 *ngIf="!isLoginMode">📝 Inscription Dashboard SEO</h2>
     
-    <form (ngSubmit)="login()">
+    <!-- Formulaire de Connexion -->
+    <form *ngIf="isLoginMode" (ngSubmit)="login()">
       <div class="form-group">
         <label for="email">Email</label>
         <input 
           type="email" 
           id="email" 
+          name="email"
           [(ngModel)]="email" 
           required 
           placeholder="votre@email.com"
@@ -20,9 +23,10 @@
         <input 
           type="password" 
           id="password" 
+          name="password"
           [(ngModel)]="password" 
           required 
-          placeholder="••••••••"
+          placeholder="•••••••"
           class="form-control"
         >
       </div>
@@ -36,15 +40,97 @@
         <span *ngIf="!loading">🚀 Se connecter</span>
       </button>
     </form>
-    
-    <div class="signup-section">
-      <p>Pas encore de compte ?</p>
+
+    <!-- Formulaire d'Inscription -->
+    <form *ngIf="!isLoginMode" (ngSubmit)="signUp()">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email"
+          [(ngModel)]="email" 
+          required 
+          placeholder="votre@email.com"
+          class="form-control"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username"
+          [(ngModel)]="username" 
+          required 
+          placeholder="pseudo123"
+          class="form-control"
+        >
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first_name">Prénom</label>
+          <input 
+            type="text" 
+            id="first_name" 
+            name="first_name"
+            [(ngModel)]="first_name" 
+            required 
+            placeholder="Jean"
+            class="form-control"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="last_name">Nom</label>
+          <input 
+            type="text" 
+            id="last_name" 
+            name="last_name"
+            [(ngModel)]="last_name" 
+            required 
+            placeholder="Dupont"
+            class="form-control"
+          >
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password"
+          [(ngModel)]="password" 
+          required 
+          placeholder="••••••"
+          class="form-control"
+        >
+      </div>
+      
       <button 
-        (click)="signUp()" 
-        [disabled]="loading || !email || !password"
+        type="submit" 
+        [disabled]="loading || !email || !username || !first_name || !last_name || !password"
+        class="btn btn-primary"
+      >
+        <span *ngIf="loading">🔄 Inscription...</span>
+        <span *ngIf="!loading">📝 Créer un compte</span>
+      </button>
+    </form>
+    
+    <!-- Bouton de basculement -->
+    <div class="toggle-section">
+      <p *ngIf="isLoginMode">Pas encore de compte ?</p>
+      <p *ngIf="!isLoginMode">Déjà un compte ?</p>
+      <button 
+        (click)="toggleMode()" 
+        [disabled]="loading"
         class="btn btn-secondary"
       >
-        📝 Créer un compte
+        <span *ngIf="isLoginMode">📝 Créer un compte</span>
+        <span *ngIf="!isLoginMode">🔐 Se connecter</span>
       </button>
     </div>
   </div>

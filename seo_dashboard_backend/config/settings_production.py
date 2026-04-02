@@ -15,24 +15,43 @@ DEBUG = False
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-in-production')
 
 # Database configuration for production
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'seo_dashboard'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+# Support pour PostgreSQL et MySQL (PlanetScale)
+if os.environ.get('DB_ENGINE') == 'mysql':
+    # Configuration MySQL (PlanetScale)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'seo_dashboard'),
+            'USER': os.environ.get('DB_USER', 'root'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            }
+        }
     }
-}
+else:
+    # Configuration PostgreSQL (par défaut)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'seo_dashboard'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
+    }
 
 # Allowed hosts for production
 ALLOWED_HOSTS = ['*.vercel.app', 'localhost', '127.0.0.1', '0.0.0.0']
 
 # CORS configuration for production
 CORS_ALLOWED_ORIGINS = [
-    "https://seo-dashboard.vercel.app",
-    "https://www.seo-dashboard.vercel.app",
+    "https://project-final.vercel.app",
+    "https://www.project-final.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

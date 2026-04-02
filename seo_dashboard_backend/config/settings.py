@@ -1,5 +1,7 @@
 # settings.py
 
+import os
+import dj_database_url
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -8,7 +10,7 @@ SECRET_KEY = 'django-insecure-your-secret-key'
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['*']  # Railway génère une URL dynamique
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -24,15 +26,26 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'config.middleware.CustomCorsMiddleware',  # Notre middleware CORS personnalisé
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'django_cors_headers.middleware.CorsMiddleware',  # Temporairement désactivé
 ]
+
+# ✅ CORS SETTINGS (désactivés, utilisant notre middleware)
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:4200",
+#     "http://127.0.0.1:4200",
+# ]
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_METHODS = True
+# CORS_ALLOW_HEADERS = True
 
 ROOT_URLCONF = 'config.urls'
 
@@ -54,17 +67,26 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# ✅ DATABASE MYSQL (XAMPP)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'seo_dashboard',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': '127.0.0.1',
-        'PORT': '3307',
+# Base de données — Railway ou local XAMPP
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    # Production (Railway)
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
     }
-}
+else:
+    # Local (XAMPP)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'seo_dashboard',
+            'USER': 'root',
+            'PASSWORD': '',
+            'HOST': '127.0.0.1',
+            'PORT': '3307',
+        }
+    }
 
 # ✅ GOOGLE ANALYTICS CONFIGURATION
 SERVICE_ACCOUNT_FILE = 'service_account.json'
@@ -107,5 +129,8 @@ SIMPLE_JWT = {
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
+
+# Static files configuration
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

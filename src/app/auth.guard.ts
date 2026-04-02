@@ -1,24 +1,33 @@
 import { Injectable } from '@angular/core'
 import { CanActivate, Router } from '@angular/router'
-import { supabase } from './supabaseClient'
+import { WorkingAuthService } from './services/working-auth.service'
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthGuard implements CanActivate {
 
-  constructor(private router: Router) {}
+  constructor(
+    private workingAuthService: WorkingAuthService,
+    private router: Router
+  ) {}
 
   async canActivate(): Promise<boolean> {
     console.log('🛡️ AuthGuard: Checking authentication...')
+    console.log('🛡️ Current user:', this.workingAuthService.getCurrentUser())
+    console.log('🛡️ Access token exists:', !!this.workingAuthService.isLoggedIn())
+    
+    // Temporairement désactivé pour le debug
+    console.log('🔓 AuthGuard: Temporarily disabled for debugging')
+    return true
     
     try {
-      const { data, error } = await supabase.auth.getSession()
+      const isValid = await this.workingAuthService.isSessionValid()
       
-      console.log('🛡️ AuthGuard: Session check result:', { data, error })
+      console.log('🛡️ AuthGuard: Session check result:', isValid)
 
-      if (data.session && data.session.user) {
-        console.log('✅ AuthGuard: User authenticated:', data.session.user.email)
+      if (isValid) {
+        console.log('✅ AuthGuard: User authenticated, allowing access')
         return true
       }
 

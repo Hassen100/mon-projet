@@ -13,7 +13,7 @@
   border-radius: 12px;
   padding: 2rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -27,6 +27,17 @@
 
 .form-group {
   margin-bottom: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
 }
 
 .form-group label {
@@ -91,12 +102,14 @@
   cursor: not-allowed;
 }
 
-.signup-section {
-  margin-top: 1.5rem;
+.toggle-section {
+  margin-top: 2rem;
   text-align: center;
+  border-top: 1px solid #30363d;
+  padding-top: 1.5rem;
 }
 
-.signup-section p {
+.toggle-section p {
   color: #8b949e;
   margin-bottom: 1rem;
   font-size: 0.9rem;

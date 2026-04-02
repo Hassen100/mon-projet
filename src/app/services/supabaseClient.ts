@@ -1,10 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-import { environment } from '../../environments/environment';
-
-export const supabase = createClient(environment.supabaseUrl, environment.supabaseKey, {
+// Service Supabase désactivé - Utilisation de Django à la place
+export const supabase = {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    getSession: () => Promise.resolve({ data: { session: null } }),
+    signUp: () => Promise.resolve({ data: { user: null }, error: null }),
+    signInWithPassword: () => Promise.resolve({ data: { user: null }, error: null }),
+    signOut: () => Promise.resolve(),
+    getUser: () => Promise.resolve({ data: { user: null } })
   }
-});
+};

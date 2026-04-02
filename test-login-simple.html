@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login Simple</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; width: 100%; }
+        button:hover { background: #0056b3; }
+        .result { margin: 15px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .logs { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Login Simple</h1>
+        <p>Ce test envoie directement une requête au backend Django.</p>
+        
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="email" value="successfinal@example.com">
+        </div>
+        
+        <div class="form-group">
+            <label>Mot de passe:</label>
+            <input type="password" id="password" value="TestPassword123!">
+        </div>
+        
+        <button onclick="testLogin()">Tester la connexion</button>
+        <button onclick="testRegister()">Tester l'inscription</button>
+        <button onclick="clearLogs()">Effacer les logs</button>
+        
+        <div id="result"></div>
+        <div id="logs" class="logs"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8001/api/auth';
+        
+        function log(message) {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `[${timestamp}] ${message}<br>`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+        
+        function showResult(message, isSuccess) {
+            const result = document.getElementById('result');
+            result.className = `result ${isSuccess ? 'success' : 'error'}`;
+            result.innerHTML = message;
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('🔐 Début du test de connexion...');
+            log(`📧 Email: ${email}`);
+            log(`🔒 Password: ${password ? '***' : 'vide'}`);
+            
+            showResult('Test en cours...', false);
+            
+            try {
+                log('📡 Envoi de la requête POST...');
+                
+                const response = await fetch(`${API_BASE}/login/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                log(`📊 Status: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    log(`❌ Erreur réponse: ${JSON.stringify(errorData)}`);
+                    showResult(`Erreur ${response.status}: ${errorData.detail || errorData.error || 'Erreur inconnue'}`, false);
+                    return;
+                }
+                
+                const data = await response.json();
+                log(`✅ Succès: ${JSON.stringify(data)}`);
+                
+                if (data.access && data.user) {
+                    showResult(`✅ Connexion réussie! Utilisateur: ${data.user.email}`, true);
+                    log('🎯 Tokens reçus et utilisateur sauvegardé');
+                } else {
+                    showResult('❌ Réponse invalide du serveur', false);
+                }
+                
+            } catch (error) {
+                log(`❌ Erreur catch: ${error.message}`);
+                showResult(`❌ Erreur: ${error.message}`, false);
+            }
+        }
+        
+        async function testRegister() {
+            const email = `test${Date.now()}@example.com`;
+            const username = `test${Date.now()}`;
+            const password = 'TestPassword123!';
+            
+            log('🔐 Début du test d\'inscription...');
+            log(`📧 Email: ${email}`);
+            log(`👤 Username: ${username}`);
+            
+            showResult('Test en cours...', false);
+            
+            try {
+                log('📡 Envoi de la requête POST...');
+                
+                const response = await fetch(`${API_BASE}/register/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email,
+                        username,
+                        first_name: 'Test',
+                        last_name: 'User',
+                        password,
+                        password_confirm: password
+                    })
+                });
+                
+                log(`📊 Status: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    log(`❌ Erreur réponse: ${JSON.stringify(errorData)}`);
+                    showResult(`Erreur ${response.status}: ${errorData.detail || errorData.error || 'Erreur inconnue'}`, false);
+                    return;
+                }
+                
+                const data = await response.json();
+                log(`✅ Succès: ${JSON.stringify(data)}`);
+                showResult(`✅ Inscription réussie! Email: ${data.user.email}`, true);
+                
+            } catch (error) {
+                log(`❌ Erreur catch: ${error.message}`);
+                showResult(`❌ Erreur: ${error.message}`, false);
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        // Auto-test au chargement
+        window.onload = function() {
+            log('🚀 Page de test chargée');
+            log('🔧 Prête à tester l\'authentification Django');
+        };
+    </script>
+</body>
+</html>

@@ -1,22 +1,22 @@
-import { Component, OnInit, OnDestroy, signal, inject, AfterViewInit } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { Component, OnInit, OnDestroy, AfterViewInit, signal, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { AuthService } from '../auth.service';
+import { WorkingAuthService } from '../services/working-auth.service';
 import { AnalyticsService } from '../services/analytics.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
   // Inject services
   private router = inject(Router);
-  private authService = inject(AuthService);
+  private workingAuthService = inject(WorkingAuthService);
   private analyticsService = inject(AnalyticsService);
 
   // Signals
@@ -36,9 +36,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   constructor() {
     // Get current user from auth service
-    this.authService.user$.subscribe(user => {
-      this.user.set(user);
-    });
+    this.user.set(this.workingAuthService.getCurrentUser());
   }
 
   ngOnInit() {
@@ -90,8 +88,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
 
   async logout() {
     try {
-      await this.authService.logout();
-      this.router.navigate(['/login']);
+      await this.workingAuthService.logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

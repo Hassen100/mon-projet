@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
@@ -14,6 +16,7 @@ from .serializers import (
 
 User = get_user_model()
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = UserLoginSerializer
     
@@ -32,6 +35,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
+@csrf_exempt
 def register(request):
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
