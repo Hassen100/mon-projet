@@ -10,7 +10,7 @@ SECRET_KEY = 'django-insecure-your-secret-key'
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']  # Railway génère une URL dynamique
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']  # Pour développement local
 
 INSTALLED_APPS = [
     'django.contrib.admin',

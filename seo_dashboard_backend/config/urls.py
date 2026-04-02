@@ -16,8 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
+
+def api_root(request):
+    """Vue racine de l'API"""
+    return JsonResponse({
+        'message': 'SEO Dashboard API',
+        'version': '1.0.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'auth': '/api/auth/',
+            'documentation': 'API pour le SEO Dashboard'
+        }
+    })
 
 urlpatterns = [
+    path('', api_root, name='api_root'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),
     # path('api/analytics/', include('analytics.urls')),  # Temporairement désactivé
