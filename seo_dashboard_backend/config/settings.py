@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',  # Pour CORS avec Angular
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'authentication',
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Doit être en premier pour CORS
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -43,15 +45,25 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ✅ CORS SETTINGS (désactivés, utilisant notre middleware)
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:4200",
-#     "http://127.0.0.1:4200",
-# ]
-# CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOW_ALL_ORIGINS = True
-# CORS_ALLOW_ALL_METHODS = True
-# CORS_ALLOW_HEADERS = True
+# ✅ CORS SETTINGS (activés pour Angular)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+    "http://192.168.1.162:4200",
+    "https://project-final.vercel.app",
+    "https://hassen100.github.io"
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_METHODS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-language",
+    "content-language",
+    "content-type",
+    "authorization",
+    "x-requested-with"
+]
 
 ROOT_URLCONF = 'config.urls'
 
