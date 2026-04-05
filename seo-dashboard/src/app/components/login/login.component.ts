@@ -15,7 +15,7 @@ export class LoginComponent {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
   private readonly api = getApiBaseUrl();
-  private readonly requestTimeoutMs = 5000;
+  private readonly requestTimeoutMs = this.getRequestTimeoutMs();
 
   email = '';
   emailError = '';
@@ -56,6 +56,7 @@ export class LoginComponent {
     }
 
     this.isLoading = true;
+    this.showLoadingHint();
 
     try {
       const email = this.email.trim().toLowerCase();
@@ -81,7 +82,7 @@ export class LoginComponent {
       this.showAlert('Connexion reussie. Redirection...', 'success');
       setTimeout(() => this.goDashboard(), 700);
     } catch {
-      this.showAlert('Backend Django indisponible sur 127.0.0.1:8000', 'error');
+      this.showAlert(this.getNetworkErrorMessage(), 'error');
     } finally {
       this.isLoading = false;
     }
@@ -113,6 +114,7 @@ export class LoginComponent {
     }
 
     this.isLoading = true;
+    this.showLoadingHint();
 
     try {
       const email = this.registerEmail.trim().toLowerCase();
@@ -135,7 +137,7 @@ export class LoginComponent {
       this.closeRegisterModal();
       setTimeout(() => this.goDashboard(), 700);
     } catch {
-      this.showAlert('Backend Django indisponible sur 127.0.0.1:8000', 'error');
+      this.showAlert(this.getNetworkErrorMessage(), 'error');
     } finally {
       this.isLoading = false;
     }
@@ -143,6 +145,39 @@ export class LoginComponent {
 
   onForgotPassword(): void {
     this.showAlert('Ajoutez ensuite une API reset-password cote Django.', 'info');
+  }
+
+  private getRequestTimeoutMs(): number {
+    if (!isPlatformBrowser(this.platformId)) {
+      return 65000;
+    }
+
+    const { hostname } = window.location;
+    return hostname === 'localhost' || hostname === '127.0.0.1' ? 5000 : 65000;
+  }
+
+  private showLoadingHint(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const { hostname } = window.location;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      this.showAlert('Le serveur gratuit peut prendre quelques secondes pour se reveiller...', 'info');
+    }
+  }
+
+  private getNetworkErrorMessage(): string {
+    if (!isPlatformBrowser(this.platformId)) {
+      return 'Le serveur est temporairement indisponible.';
+    }
+
+    const { hostname } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'Backend Django indisponible sur 127.0.0.1:8000';
+    }
+
+    return 'Le serveur met plus de temps que prevu a repondre. Reessayez dans quelques secondes.';
   }
 
   private toFrenchErrorMessage(message: string): string {
