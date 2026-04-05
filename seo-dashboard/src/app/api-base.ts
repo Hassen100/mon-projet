@@ -1,4 +1,4 @@
-const productionApiBaseUrl = 'https://your-render-backend.onrender.com/api';
+const productionApiBaseUrl = 'https://mon-projet-ve8t.onrender.com/api';
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') {
