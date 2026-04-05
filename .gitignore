@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.angular/
+.vscode/
+
+seo-dashboard/node_modules/
+seo-dashboard/dist/
+seo-dashboard/.angular/
+seo-dashboard/dev-server*.log
+
+backend/django.out.log
+backend/django.err.log
+backend/**/__pycache__/
+backend/**/*.pyc
+
+.DS_Store
+Thumbs.db

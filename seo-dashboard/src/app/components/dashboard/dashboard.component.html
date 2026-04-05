@@ -1,0 +1,224 @@
+<header class="header">
+  <div class="header-inner">
+    <div class="header-tag">#SEO-IA</div>
+    <h1 class="header-title">SEO Pulse Board</h1>
+    <p class="header-subtitle">
+      Analysez le trafic organique, les pages cles, le taux de rebond et les mots-cles performants en temps reel.
+    </p>
+  </div>
+
+  <div class="header-meta">
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span>Derniere sync: {{ currentTime.toLocaleTimeString('fr-FR') }}</span>
+    </div>
+
+    <div class="user-pill">
+      <span class="user-avatar">{{ userInitial }}</span>
+      <span class="user-name">{{ userName }}</span>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <div class="filter-bar">
+    <div class="filter-grid">
+      <div class="field">
+        <label class="field-label">Debut</label>
+        <input type="date" class="field-input" />
+      </div>
+      <div class="field">
+        <label class="field-label">Fin</label>
+        <input type="date" class="field-input" />
+      </div>
+      <div class="field">
+        <label class="field-label">Page</label>
+        <input type="text" class="field-input" placeholder="https://example.com/page" />
+      </div>
+      <div class="field">
+        <label class="field-label">Source</label>
+        <select class="field-input">
+          <option value="all">Toutes</option>
+          <option value="organic">Organique</option>
+          <option value="direct">Direct</option>
+          <option value="referral">Referral</option>
+          <option value="social">Social</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" (click)="applyFilters()">Appliquer filtres</button>
+      <button class="btn btn-outline" (click)="verifyUrl()">Verifier URL</button>
+      <button class="btn btn-outline" (click)="syncGoogle()">Sync Google</button>
+      <button class="btn btn-ai" (click)="generateAIRecommendations()">Generer recommandations IA</button>
+      <button *ngIf="isAdmin" class="btn btn-admin" (click)="toggleAuthUsers()">
+        {{ showAuthUsers ? 'Masquer users auth' : 'Afficher users auth' }}
+      </button>
+      <button class="btn btn-ghost" (click)="logout()">Deconnexion</button>
+    </div>
+  </div>
+
+  <section class="admin-panel" *ngIf="isAdmin && showAuthUsers">
+    <div class="admin-panel-header">
+      <div>
+        <div class="admin-kicker">Admin</div>
+        <h2 class="admin-title">Utilisateurs deja connectes</h2>
+        <p class="admin-subtitle">Liste des comptes Django qui ont deja une date de connexion.</p>
+      </div>
+      <button class="btn btn-outline" (click)="refreshAuthUsers()">Actualiser</button>
+    </div>
+
+    <div class="admin-state" *ngIf="isLoadingAuthUsers">Chargement des utilisateurs...</div>
+    <div class="admin-state admin-error" *ngIf="authUsersError">{{ authUsersError }}</div>
+
+    <div class="admin-table-wrap" *ngIf="!isLoadingAuthUsers && !authUsersError">
+      <table>
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Derniere connexion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let authUser of authUsers">
+            <td>{{ authUser.username }}</td>
+            <td>{{ authUser.email }}</td>
+            <td>
+              <span class="badge" [ngClass]="authUser.is_admin ? 'badge-up' : 'badge-flat'">
+                {{ authUser.is_admin ? 'Admin' : 'User' }}
+              </span>
+            </td>
+            <td>{{ formatLastLogin(authUser.last_login) }}</td>
+          </tr>
+          <tr *ngIf="authUsers.length === 0">
+            <td colspan="4">Aucun utilisateur connecte auparavant.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Sessions</div>
+      <div class="kpi-value" id="sessions">{{ kpiData.sessions.toLocaleString('fr-FR') }}</div>
+      <div class="kpi-delta delta-up">+{{ randomBetween(4, 18) }}% vs periode prec.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Utilisateurs</div>
+      <div class="kpi-value" id="users">{{ kpiData.users.toLocaleString('fr-FR') }}</div>
+      <div class="kpi-delta delta-up">+{{ randomBetween(2, 12) }}% vs periode prec.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pages vues</div>
+      <div class="kpi-value" id="pageviews">{{ kpiData.pageviews.toLocaleString('fr-FR') }}</div>
+      <div class="kpi-delta delta-up">+{{ randomBetween(5, 22) }}% vs periode prec.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Taux de rebond moyen</div>
+      <div class="kpi-value">{{ kpiData.bounceRate }}%</div>
+      <div class="kpi-delta delta-down">-{{ randomBetween(1, 6) }}% vs periode prec.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3 class="chart-title">Trafic organique dans le temps</h3>
+      <div class="chart-wrap">
+        <canvas id="trafficChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 class="chart-title">Top mots-cles (clics)</h3>
+      <div class="chart-wrap">
+        <canvas id="keywordsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <section class="ai-section" *ngIf="showRecommendations">
+    <div class="ai-header">
+      <div class="ai-icon">AI</div>
+      <div>
+        <h2 class="ai-title">Recommendations IA</h2>
+        <p class="ai-subtitle">Generees par analyse NLP des tendances de trafic</p>
+      </div>
+    </div>
+
+    <div class="ai-grid">
+      <article class="ai-card" *ngFor="let recommendation of aiRecommendations" [ngClass]="'priority-' + recommendation.priority">
+        <div class="ai-card-icon">{{ recommendation.icon }}</div>
+        <h3>{{ recommendation.title }}</h3>
+        <p>{{ recommendation.description }}</p>
+        <span class="priority-badge" [ngClass]="'badge-' + recommendation.priority">{{ recommendation.priorityLabel }}</span>
+      </article>
+    </div>
+  </section>
+
+  <div class="bottom-grid">
+    <div class="table-card">
+      <h3 class="table-title">Pages les plus consultees</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Page</th>
+            <th>Vues</th>
+            <th>Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let page of topPages">
+            <td style="color: var(--teal-light)">{{ page.page }}</td>
+            <td>{{ page.views.toLocaleString('fr-FR') }}</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-up': page.trend === 'up',
+                'badge-down': page.trend === 'down',
+                'badge-flat': page.trend === 'flat'
+              }">
+                {{ page.trend === 'up' ? 'Hausse' : page.trend === 'down' ? 'Baisse' : 'Stable' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-card">
+      <h3 class="table-title">Mots-cles performants</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Mot-cle</th>
+            <th>Position</th>
+            <th>CTR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let kw of topKeywords">
+            <td>{{ kw.keyword }}</td>
+            <td>
+              <span [style.color]="kw.position <= 5 ? 'var(--accent)' : kw.position <= 15 ? 'var(--yellow)' : 'var(--warn)'">
+                #{{ kw.position }}
+              </span>
+            </td>
+            <td>{{ kw.ctr }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart-card">
+      <h3 class="chart-title">Rebond par source</h3>
+      <div class="chart-wrap">
+        <canvas id="bounceChart"></canvas>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>SEO Pulse Board - Projet #SEO-IA - Angular · Chart.js · Google Analytics API · NLP</footer>
