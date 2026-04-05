@@ -200,8 +200,8 @@ export class LoginComponent {
 
   private goDashboard(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    void this.router.navigateByUrl('/dashboard').then((ok) => {
-      if (!ok) window.location.href = '/dashboard';
+    void this.router.navigateByUrl('dashboard').then((ok) => {
+      if (!ok) window.location.hash = '#/dashboard';
     });
   }
 }

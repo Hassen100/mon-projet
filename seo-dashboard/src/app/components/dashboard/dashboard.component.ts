@@ -118,7 +118,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     void this.router.navigateByUrl('/login').then((navigated) => {
       if (!navigated) {
-        window.location.href = '/login';
+        window.location.hash = '#/login';
       }
     });
   }
