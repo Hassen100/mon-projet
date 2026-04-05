@@ -9,7 +9,7 @@ body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: #0d1117;
   min-height: 100vh;
-  color: var(--text-primary);
+  color: #e6edf3;
 }
 
 /* Import Google Fonts */
