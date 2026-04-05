@@ -85,7 +85,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Base de données — Railway ou local XAMPP
+# Base de données — Railway, local XAMPP ou SQLite fallback
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
@@ -94,17 +94,29 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
-    # Local (XAMPP)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'seo_dashboard',
-            'USER': 'root',
-            'PASSWORD': '',
-            'HOST': '127.0.0.1',
-            'PORT': '3307',
+    # Vérifier si MySQL est disponible
+    try:
+        import mysql.connector
+        mysql.connector.connect(host='127.0.0.1', port='3306', user='root', password='')
+        # Local (XAMPP) - MySQL disponible
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': 'seo_dashboard',
+                'USER': 'root',
+                'PASSWORD': '',
+                'HOST': '127.0.0.1',
+                'PORT': '3306',
+            }
         }
-    }
+    except:
+        # Fallback - SQLite pour développement
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 
 # ✅ GOOGLE ANALYTICS CONFIGURATION
 SERVICE_ACCOUNT_FILE = 'service_account.json'

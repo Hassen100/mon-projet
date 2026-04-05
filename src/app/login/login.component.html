@@ -1,12 +1,17 @@
-<div class="login-container">
-  <div class="login-card">
-    <h2 *ngIf="isLoginMode">🔐 Connexion Dashboard SEO</h2>
-    <h2 *ngIf="!isLoginMode">📝 Inscription Dashboard SEO</h2>
+<div class="login-container" style="display: flex !important; justify-content: center !important; align-items: center !important; min-height: 100vh !important; background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #21262d 100%) !important; font-family: 'DM Sans', sans-serif !important; position: relative !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; box-sizing: border-box !important;">
+  
+  <!-- Effet de fond -->
+  <div style="position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; background: radial-gradient(circle at 20% 80%, rgba(26, 127, 116, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(139, 148, 158, 0.05) 0%, transparent 50%) !important; pointer-events: none !important;"></div>
+  
+  <div class="login-card" style="background: rgba(22, 27, 34, 0.95) !important; backdrop-filter: blur(10px) !important; border: 1px solid #30363d !important; border-radius: 16px !important; padding: 2.5rem !important; width: 100% !important; max-width: 450px !important; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(48, 54, 61, 0.5) !important; position: relative !important; z-index: 1 !important;">
+    
+    <h2 *ngIf="isLoginMode" style="color: #e6edf3 !important; text-align: center !important; margin-bottom: 2rem !important; font-size: 1.75rem !important; font-weight: 600 !important; background: linear-gradient(135deg, #1a7f74 0%, #2ea99b 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; background-clip: text !important;">🔐 Connexion Dashboard SEO</h2>
+    <h2 *ngIf="!isLoginMode" style="color: #e6edf3 !important; text-align: center !important; margin-bottom: 2rem !important; font-size: 1.75rem !important; font-weight: 600 !important; background: linear-gradient(135deg, #1a7f74 0%, #2ea99b 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; background-clip: text !important;">📝 Inscription Dashboard SEO</h2>
     
     <!-- Formulaire de Connexion -->
     <form *ngIf="isLoginMode" (ngSubmit)="login()">
-      <div class="form-group">
-        <label for="email">Email</label>
+      <div class="form-group" style="margin-bottom: 1.5rem !important;">
+        <label for="email" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Email</label>
         <input 
           type="email" 
           id="email" 
@@ -15,11 +20,12 @@
           required 
           placeholder="votre@email.com"
           class="form-control"
+          style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
         >
       </div>
       
-      <div class="form-group">
-        <label for="password">Mot de passe</label>
+      <div class="form-group" style="margin-bottom: 1.5rem !important;">
+        <label for="password" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Mot de passe</label>
         <input 
           type="password" 
           id="password" 
@@ -28,6 +34,7 @@
           required 
           placeholder="•••••••"
           class="form-control"
+          style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
         >
       </div>
       
@@ -35,6 +42,7 @@
         type="submit" 
         [disabled]="loading || !email || !password"
         class="btn btn-primary"
+        style="width: 100% !important; padding: 0.875rem !important; border: none !important; border-radius: 8px !important; font-size: 1rem !important; font-weight: 600 !important; cursor: pointer !important; transition: all 0.3s ease !important; position: relative !important; overflow: hidden !important; box-sizing: border-box !important; background: linear-gradient(135deg, #1a7f74 0%, #2ea99b 100%) !important; color: white !important; box-shadow: 0 4px 15px rgba(26, 127, 116, 0.3) !important;"
       >
         <span *ngIf="loading">🔄 Connexion...</span>
         <span *ngIf="!loading">🚀 Se connecter</span>
@@ -43,8 +51,8 @@
 
     <!-- Formulaire d'Inscription -->
     <form *ngIf="!isLoginMode" (ngSubmit)="signUp()">
-      <div class="form-group">
-        <label for="email">Email</label>
+      <div class="form-group" style="margin-bottom: 1.5rem !important;">
+        <label for="email" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Email</label>
         <input 
           type="email" 
           id="email" 
@@ -53,11 +61,12 @@
           required 
           placeholder="votre@email.com"
           class="form-control"
+          style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
         >
       </div>
 
-      <div class="form-group">
-        <label for="username">Nom d'utilisateur</label>
+      <div class="form-group" style="margin-bottom: 1.5rem !important;">
+        <label for="username" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Nom d'utilisateur</label>
         <input 
           type="text" 
           id="username" 
@@ -66,12 +75,13 @@
           required 
           placeholder="pseudo123"
           class="form-control"
+          style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
         >
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="first_name">Prénom</label>
+      <div class="form-row" style="display: flex !important; gap: 1rem !important; margin-bottom: 1.5rem !important;">
+        <div class="form-group" style="flex: 1 !important; margin-bottom: 0 !important;">
+          <label for="first_name" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Prénom</label>
           <input 
             type="text" 
             id="first_name" 
@@ -80,11 +90,12 @@
             required 
             placeholder="Jean"
             class="form-control"
+            style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
           >
         </div>
 
-        <div class="form-group">
-          <label for="last_name">Nom</label>
+        <div class="form-group" style="flex: 1 !important; margin-bottom: 0 !important;">
+          <label for="last_name" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Nom</label>
           <input 
             type="text" 
             id="last_name" 
@@ -93,12 +104,13 @@
             required 
             placeholder="Dupont"
             class="form-control"
+            style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
           >
         </div>
       </div>
       
-      <div class="form-group">
-        <label for="password">Mot de passe</label>
+      <div class="form-group" style="margin-bottom: 1.5rem !important;">
+        <label for="password" style="display: block !important; color: #8b949e !important; margin-bottom: 0.5rem !important; font-size: 0.9rem !important; font-weight: 500 !important;">Mot de passe</label>
         <input 
           type="password" 
           id="password" 
@@ -107,6 +119,7 @@
           required 
           placeholder="••••••"
           class="form-control"
+          style="width: 100% !important; padding: 0.875rem !important; background: rgba(13, 17, 23, 0.8) !important; border: 1px solid #30363d !important; border-radius: 8px !important; color: #e6edf3 !important; font-size: 1rem !important; transition: all 0.3s ease !important; box-sizing: border-box !important;"
         >
       </div>
       
@@ -114,6 +127,7 @@
         type="submit" 
         [disabled]="loading || !email || !username || !first_name || !last_name || !password"
         class="btn btn-primary"
+        style="width: 100% !important; padding: 0.875rem !important; border: none !important; border-radius: 8px !important; font-size: 1rem !important; font-weight: 600 !important; cursor: pointer !important; transition: all 0.3s ease !important; position: relative !important; overflow: hidden !important; box-sizing: border-box !important; background: linear-gradient(135deg, #1a7f74 0%, #2ea99b 100%) !important; color: white !important; box-shadow: 0 4px 15px rgba(26, 127, 116, 0.3) !important;"
       >
         <span *ngIf="loading">🔄 Inscription...</span>
         <span *ngIf="!loading">📝 Créer un compte</span>
@@ -121,13 +135,14 @@
     </form>
     
     <!-- Bouton de basculement -->
-    <div class="toggle-section">
-      <p *ngIf="isLoginMode">Pas encore de compte ?</p>
-      <p *ngIf="!isLoginMode">Déjà un compte ?</p>
+    <div class="toggle-section" style="margin-top: 2rem !important; text-align: center !important; border-top: 1px solid #30363d !important; padding-top: 1.5rem !important;">
+      <p *ngIf="isLoginMode" style="color: #8b949e !important; margin-bottom: 1rem !important; font-size: 0.9rem !important;">Pas encore de compte ?</p>
+      <p *ngIf="!isLoginMode" style="color: #8b949e !important; margin-bottom: 1rem !important; font-size: 0.9rem !important;">Déjà un compte ?</p>
       <button 
         (click)="toggleMode()" 
         [disabled]="loading"
         class="btn btn-secondary"
+        style="width: 100% !important; padding: 0.875rem !important; border: 1px solid #30363d !important; border-radius: 8px !important; font-size: 1rem !important; font-weight: 600 !important; cursor: pointer !important; transition: all 0.3s ease !important; position: relative !important; overflow: hidden !important; box-sizing: border-box !important; background: transparent !important; color: #8b949e !important; margin-top: 1rem !important;"
       >
         <span *ngIf="isLoginMode">📝 Créer un compte</span>
         <span *ngIf="!isLoginMode">🔐 Se connecter</span>
