@@ -2,6 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, inject, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import { Chart, registerables } from 'chart.js';
+import { getApiBaseUrl } from '../../api-base';
 
 interface TopPage {
   page: string;
@@ -44,7 +45,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
-  private readonly api = 'http://127.0.0.1:8000/api';
+  private readonly api = getApiBaseUrl();
 
   trafficChart?: Chart;
   keywordsChart?: Chart;

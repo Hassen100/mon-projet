@@ -1,7 +1,9 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.http import Http404
 from django.shortcuts import render
 from django.utils import timezone
+from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -115,7 +117,15 @@ def auth_users(request):
     )
 
 
+@api_view(['GET'])
+def health(request):
+    return Response({'status': 'ok'})
+
+
 def create_admin(request):
+    if not settings.ENABLE_CREATE_ADMIN_PAGE:
+        raise Http404()
+
     context = {
         'error': '',
         'success': '',

@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd seo-dashboard && npm install && npm run build:static",
+  "outputDirectory": "seo-dashboard/dist/seo-dashboard/browser",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
