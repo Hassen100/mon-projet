@@ -1,1 +1,0 @@
-var t="https://your-render-backend.onrender.com/api";function o(){if(typeof window>"u")return t;let{hostname:n}=window.location;return n==="localhost"||n==="127.0.0.1"?"http://127.0.0.1:8000/api":t}export{o as a};

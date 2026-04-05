@@ -1,0 +1,1 @@
+var n="https://mon-projet-ve8t.onrender.com/api";function o(){if(typeof window>"u")return n;let{hostname:t}=window.location;return t==="localhost"||t==="127.0.0.1"?"http://127.0.0.1:8000/api":n}export{o as a};
