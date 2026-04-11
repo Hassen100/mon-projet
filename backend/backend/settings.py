@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import json
+from urllib.parse import urlparse
 
 import dj_database_url
 try:
@@ -17,8 +18,29 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-seo-dashboard-dev-k
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() == 'true'
 
-raw_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,.onrender.com')    
-ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(',') if host.strip()]
+
+def parse_csv_env(name, default=''):
+    raw_value = os.getenv(name, default)
+    return [item.strip() for item in raw_value.split(',') if item.strip()]
+
+
+def normalize_origin(value):
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return value
+
+
+allowed_hosts = parse_csv_env('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')
+
+# Always allow Render domains in production, even when DJANGO_ALLOWED_HOSTS is misconfigured.
+allowed_hosts.extend(['127.0.0.1', 'localhost', '.onrender.com'])
+
+render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if render_hostname:
+    allowed_hosts.append(render_hostname)
+
+ALLOWED_HOSTS = list(dict.fromkeys(allowed_hosts))
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -101,11 +123,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').strip().lower() == 'true'
 
-raw_cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in raw_cors_origins.split(',') if origin.strip()]
+raw_cors_origins = parse_csv_env('CORS_ALLOWED_ORIGINS', '')
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(normalize_origin(origin) for origin in raw_cors_origins))
 
-raw_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_csrf_origins.split(',') if origin.strip()]
+raw_csrf_origins = parse_csv_env('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(normalize_origin(origin) for origin in raw_csrf_origins))
 
 ENABLE_CREATE_ADMIN_PAGE = os.getenv('ENABLE_CREATE_ADMIN_PAGE', 'True').strip().lower() == 'true'
 
@@ -125,4 +147,3 @@ try:
     GSC_CREDENTIALS = json.loads(GSC_CREDENTIALS_JSON) if GSC_CREDENTIALS_JSON else {}
 except (json.JSONDecodeError, ValueError):
     GSC_CREDENTIALS = {}
-
