@@ -6,11 +6,13 @@ const csrIndex = join(browserDir, 'index.csr.html');
 const indexHtml = join(browserDir, 'index.html');
 const notFound = join(browserDir, '404.html');
 
-if (!existsSync(csrIndex)) {
-  throw new Error(`Missing file: ${csrIndex}`);
+const sourceIndex = existsSync(csrIndex) ? csrIndex : indexHtml;
+
+if (!existsSync(sourceIndex)) {
+  throw new Error(`Missing file: ${sourceIndex}`);
 }
 
-copyFileSync(csrIndex, indexHtml);
-copyFileSync(csrIndex, notFound);
+copyFileSync(sourceIndex, indexHtml);
+copyFileSync(sourceIndex, notFound);
 
 console.log('Static browser build prepared for GitHub Pages/Vercel.');
