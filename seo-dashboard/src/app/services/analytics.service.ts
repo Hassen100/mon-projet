@@ -39,6 +39,7 @@ export interface SearchSummary {
     ctr: number;
     position: number;
   };
+  daily_data?: SearchDailyData[];
 }
 
 export interface SearchDailyData {

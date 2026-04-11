@@ -194,7 +194,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isLoadingSearchConsole = true;
     this.analyticsService.getSearchSummary(this.userId, this.getEffectiveDays(), refreshFromGoogle, this.selectedMode).subscribe({
       next: (data) => {
-        const summary = data.search || { clicks: 0, impressions: 0, ctr: 0, position: 0 };
+        const summary = this.resolveSearchSummary(data);
         this.searchClicks = summary.clicks || 0;
         this.searchImpressions = summary.impressions || 0;
         this.searchCtr = summary.ctr || 0;
@@ -216,6 +216,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.createSearchConsoleChart();
       }
     });
+  }
+
+  private resolveSearchSummary(data: { search?: { clicks: number; impressions: number; ctr: number; position: number }; daily_data?: SearchDailyData[]; }): { clicks: number; impressions: number; ctr: number; position: number } {
+    if (data.search) {
+      return data.search;
+    }
+
+    const dailyData = data.daily_data || [];
+    if (dailyData.length === 0) {
+      return { clicks: 0, impressions: 0, ctr: 0, position: 0 };
+    }
+
+    const clicks = dailyData.reduce((total, point) => total + (point.clicks || 0), 0);
+    const impressions = dailyData.reduce((total, point) => total + (point.impressions || 0), 0);
+    const weightedPosition = dailyData.reduce((total, point) => total + (point.position || 0) * (point.impressions || 0), 0);
+
+    return {
+      clicks,
+      impressions,
+      ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+      position: impressions > 0 ? weightedPosition / impressions : 0,
+    };
   }
 
   onModeChange(): void {
