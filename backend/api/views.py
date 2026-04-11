@@ -295,7 +295,8 @@ def auth_users(request):
     if not admin_user.is_superuser:
         return Response({'message': 'Superuser access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    users = User.objects.exclude(last_login__isnull=True).order_by('-last_login')
+    # Include newly created accounts even if they have never logged in yet.
+    users = User.objects.filter(is_active=True).order_by('-date_joined', '-last_login')
 
     return Response(
         {
