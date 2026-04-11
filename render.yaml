@@ -1,3 +1,8 @@
+databases:
+  - name: mon-projet-db
+    databaseName: mon_projet
+    user: mon_projet_user
+
 services:
   - type: web
     name: mon-projet-backend
@@ -7,13 +12,21 @@ services:
     startCommand: gunicorn backend.wsgi:application
     healthCheckPath: /api/health/
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mon-projet-db
+          property: connectionString
       - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_USE_DOTENV
         value: "False"
       - key: ENABLE_CREATE_ADMIN_PAGE
         value: "False"
       - key: CORS_ALLOW_ALL_ORIGINS
         value: "False"
       - key: DJANGO_ALLOWED_HOSTS
-        value: your-backend.onrender.com
+        value: mon-projet-backend.onrender.com,.onrender.com,localhost,127.0.0.1
       - key: CORS_ALLOWED_ORIGINS
         value: https://hassen100.github.io,https://hassen100.github.io/mon-projet
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://mon-projet-backend.onrender.com,https://hassen100.github.io,https://hassen100.github.io/mon-projet

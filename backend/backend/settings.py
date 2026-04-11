@@ -3,10 +3,13 @@ from pathlib import Path
 import json
 
 import dj_database_url
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
 
-# Load environment variables from .env file
-load_dotenv()
+if load_dotenv is not None and os.getenv('DJANGO_USE_DOTENV', 'true').strip().lower() == 'true':
+    load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +17,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-seo-dashboard-dev-k
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() == 'true'
 
-raw_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')
+raw_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')    
 ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(',') if host.strip()]
 
 INSTALLED_APPS = [
@@ -63,20 +66,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 ASGI_APPLICATION = 'backend.asgi.application'
 
-default_mysql_url = (
-    f"mysql://{os.getenv('MYSQL_USER', 'root')}:"
-    f"{os.getenv('MYSQL_PASSWORD', '')}@"
-    f"{os.getenv('MYSQL_HOST', '127.0.0.1')}:"
-    f"{os.getenv('MYSQL_PORT', '3307')}/"
-    f"{os.getenv('MYSQL_DATABASE', 'backend')}"
-)
-
-DATABASES = {
-    'default': dj_database_url.parse(
-        os.getenv('DATABASE_URL', default_mysql_url),
-        conn_max_age=600,
-    )
-}
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=database_url,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = []
 
@@ -120,16 +125,3 @@ try:
     GSC_CREDENTIALS = json.loads(GSC_CREDENTIALS_JSON) if GSC_CREDENTIALS_JSON else {}
 except (json.JSONDecodeError, ValueError):
     GSC_CREDENTIALS = {}
-
-# REST Framework Configuration
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-}
