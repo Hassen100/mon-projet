@@ -272,10 +272,10 @@ class GoogleSearchConsoleService:
         rows_count = len(rows)
 
         for row in rows:
-            total_clicks += int(row.get('clicks', 0))
-            total_impressions += int(row.get('impressions', 0))
-            total_ctr += float(row.get('ctr', 0))
-            total_position += float(row.get('position', 0))
+            total_clicks += int(row.get('clicks') or 0)
+            total_impressions += int(row.get('impressions') or 0)
+            total_ctr += float(row.get('ctr') or 0)
+            total_position += float(row.get('position') or 0)
 
         return {
             "clicks": total_clicks,

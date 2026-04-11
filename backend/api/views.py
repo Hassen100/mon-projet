@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.conf import settings
 from django.db.models import Sum, Avg
+from django.db.models.functions import Coalesce
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -113,10 +114,10 @@ def build_search_db_daily_data(user, mode, days):
         queryset = GoogleSearchConsoleData.objects.filter(user=user, date__gte=start_date)
 
     grouped = queryset.values('date').annotate(
-        total_clicks=Sum('clicks'),
-        total_impressions=Sum('impressions'),
-        avg_ctr=Avg('ctr'),
-        avg_position=Avg('position'),
+        total_clicks=Coalesce(Sum('clicks'), 0),
+        total_impressions=Coalesce(Sum('impressions'), 0),
+        avg_ctr=Coalesce(Avg('ctr'), 0.0),
+        avg_position=Coalesce(Avg('position'), 0.0),
     ).order_by('date')
 
     return [
@@ -140,8 +141,8 @@ def build_search_db_summary(user, mode, days):
         queryset = GoogleSearchConsoleData.objects.filter(user=user, date__gte=start_date)
 
     totals = queryset.aggregate(
-        clicks=Sum('clicks'),
-        impressions=Sum('impressions'),
+        clicks=Coalesce(Sum('clicks'), 0),
+        impressions=Coalesce(Sum('impressions'), 0),
     )
 
     clicks = totals['clicks'] or 0
@@ -151,7 +152,7 @@ def build_search_db_summary(user, mode, days):
         ctr = clicks / impressions
         total_position_weighted = 0
         for item in queryset.values('position', 'impressions'):
-            total_position_weighted += (item['position'] or 0) * (item['impressions'] or 0)
+            total_position_weighted += float(item['position'] or 0) * float(item['impressions'] or 0)
         position = total_position_weighted / impressions if impressions > 0 else 0
     else:
         ctr = 0.0
