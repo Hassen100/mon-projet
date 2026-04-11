@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { getApiBaseUrl } from '../api-base';
 
 export interface AnalyticsSummary {
   sessions: number;
@@ -74,7 +74,7 @@ export interface GoogleConfig {
   providedIn: 'root',
 })
 export class AnalyticsService {
-  private baseUrl = `${environment.apiUrl}/api`;
+  private readonly baseUrl = getApiBaseUrl();
 
   constructor(private http: HttpClient) {}
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { getApiBaseUrl } from '../api-base';
 
 export interface CurlCommand {
   command: string;
@@ -15,7 +15,7 @@ export interface CurlCommand {
   providedIn: 'root'
 })
 export class CurlService {
-  private apiUrl = environment.apiUrl;
+  private readonly apiUrl = getApiBaseUrl();
 
   constructor(private http: HttpClient) {}
 

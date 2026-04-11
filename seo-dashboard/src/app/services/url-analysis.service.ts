@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { getApiBaseUrl } from '../api-base';
 
 export interface URLAnalysisRequest {
   url: string;
@@ -49,7 +49,7 @@ export interface URLHistoryResponse {
   providedIn: 'root'
 })
 export class URLAnalysisService {
-  private readonly apiUrl = environment.apiUrl;
+  private readonly apiUrl = getApiBaseUrl();
 
   constructor(private http: HttpClient) {}
 
