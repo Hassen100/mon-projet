@@ -110,23 +110,31 @@ export class AnalyticsService {
   }
 
   // Google Analytics endpoints
-  getAnalyticsSummary(days: number = 30, mode: string = 'period', refresh: boolean = false): Observable<AnalyticsSummary> {
-    const params = new HttpParams()
+  getAnalyticsSummary(days: number = 30, mode: string = 'period', refresh: boolean = false, userId?: number): Observable<AnalyticsSummary> {
+    let params = new HttpParams()
       .set('days', days.toString())
       .set('mode', mode)
       .set('refresh', refresh ? '1' : '0');
+
+    if (userId && userId > 0) {
+      params = params.set('user_id', userId.toString());
+    }
 
     return this.http.get<AnalyticsSummary>(`${this.baseUrl}/analytics/summary/`, {
       ...this.getAuthOptions(params),
     });
   }
 
-  getTopPages(days: number = 30, limit: number = 20, mode: string = 'period', refresh: boolean = false): Observable<{ pages: TopPage[] }> {
-    const params = new HttpParams()
+  getTopPages(days: number = 30, limit: number = 20, mode: string = 'period', refresh: boolean = false, userId?: number): Observable<{ pages: TopPage[] }> {
+    let params = new HttpParams()
       .set('days', days.toString())
       .set('limit', limit.toString())
       .set('mode', mode)
       .set('refresh', refresh ? '1' : '0');
+
+    if (userId && userId > 0) {
+      params = params.set('user_id', userId.toString());
+    }
 
     return this.http.get<{ pages: TopPage[] }>(`${this.baseUrl}/analytics/top-pages/`, {
       ...this.getAuthOptions(params),
@@ -157,12 +165,16 @@ export class AnalyticsService {
     });
   }
 
-  getTopQueries(days: number = 30, limit: number = 20, mode: string = 'period', refresh: boolean = false): Observable<{ queries: TopQuery[] }> {
-    const params = new HttpParams()
+  getTopQueries(days: number = 30, limit: number = 20, mode: string = 'period', refresh: boolean = false, userId?: number): Observable<{ queries: TopQuery[] }> {
+    let params = new HttpParams()
       .set('days', days.toString())
       .set('limit', limit.toString())
       .set('mode', mode)
       .set('refresh', refresh ? '1' : '0');
+
+    if (userId && userId > 0) {
+      params = params.set('user_id', userId.toString());
+    }
 
     return this.http.get<{ queries: TopQuery[] }>(`${this.baseUrl}/search/top-queries/`, {
       ...this.getAuthOptions(params),

@@ -158,7 +158,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   updateKPIs(refreshFromGoogle: boolean = false): void {
     this.isLoadingKPIs = true;
-    this.analyticsService.getAnalyticsSummary(this.getEffectiveDays(), this.selectedMode, refreshFromGoogle).subscribe({
+    this.analyticsService.getAnalyticsSummary(this.getEffectiveDays(), this.selectedMode, refreshFromGoogle, this.userId).subscribe({
       next: (data: any) => {
         this.sessions = data.sessions || 0;
         this.users = data.users || 0;
@@ -246,7 +246,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadTopPages(refreshFromGoogle: boolean = false): void {
     this.isLoadingPages = true;
-    this.analyticsService.getTopPages(this.getEffectiveDays(), 20, this.selectedMode, refreshFromGoogle).subscribe({
+    this.analyticsService.getTopPages(this.getEffectiveDays(), 20, this.selectedMode, refreshFromGoogle, this.userId).subscribe({
       next: (data: any) => {
         this.topPages = (data.pages || []).map((page: any) => ({
           page_path: page.page_path,
@@ -268,7 +268,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadTopKeywords(refreshFromGoogle: boolean = false): void {
     this.isLoadingKeywords = true;
-    this.analyticsService.getTopQueries(this.getEffectiveDays(), 20, this.selectedMode, refreshFromGoogle).subscribe({
+    this.analyticsService.getTopQueries(this.getEffectiveDays(), 20, this.selectedMode, refreshFromGoogle, this.userId).subscribe({
       next: (data: any) => {
         this.topKeywords = (data.queries || []).map((keyword: any) => ({
           query: keyword.query,

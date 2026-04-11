@@ -86,6 +86,40 @@ def should_refresh_google_data(request):
     return request.GET.get('refresh') in {'1', 'true', 'True'}
 
 
+def get_effective_ga_config(config):
+    ga_property_id = ''
+    ga_credentials = {}
+
+    if config:
+        ga_property_id = (config.ga_property_id or '').strip()
+        ga_credentials = config.ga_credentials_json or {}
+
+    if not ga_property_id:
+        ga_property_id = (getattr(settings, 'GA_PROPERTY_ID', '') or '').strip()
+
+    if not ga_credentials:
+        ga_credentials = getattr(settings, 'GA_CREDENTIALS', {}) or {}
+
+    return ga_property_id, ga_credentials
+
+
+def get_effective_gsc_config(config):
+    gsc_site_url = ''
+    gsc_credentials = {}
+
+    if config:
+        gsc_site_url = (config.gsc_site_url or '').strip()
+        gsc_credentials = config.gsc_credentials_json or {}
+
+    if not gsc_site_url:
+        gsc_site_url = (getattr(settings, 'GSC_SITE_URL', '') or '').strip()
+
+    if not gsc_credentials:
+        gsc_credentials = getattr(settings, 'GSC_CREDENTIALS', {}) or {}
+
+    return gsc_site_url, gsc_credentials
+
+
 def build_analytics_db_daily_data(user, mode, days):
     if mode in {'today', 'yesterday'}:
         target_date = datetime.now().date() if mode == 'today' else datetime.now().date() - timedelta(days=1)
@@ -456,8 +490,9 @@ def get_analytics_summary(request):
     
     try:
         if should_refresh_google_data(request):
-            if config and config.ga_property_id and config.ga_credentials_json:
-                ga_service = GoogleAnalyticsService(config.ga_credentials_json, config.ga_property_id)
+            ga_property_id, ga_credentials = get_effective_ga_config(config)
+            if ga_property_id and ga_credentials:
+                ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
                 if mode in {'today', 'yesterday'}:
                     saved_data = ga_service.save_analytics_data(user, days=1, mode=mode)
                     return Response({
@@ -546,8 +581,9 @@ def get_top_pages(request):
     
     try:
         if should_refresh_google_data(request):
-            if config and config.ga_property_id and config.ga_credentials_json:
-                ga_service = GoogleAnalyticsService(config.ga_credentials_json, config.ga_property_id)
+            ga_property_id, ga_credentials = get_effective_ga_config(config)
+            if ga_property_id and ga_credentials:
+                ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
                 if mode in {'today', 'yesterday'}:
                     ga_service.save_analytics_data(user, days=1, mode=mode)
                     live_pages = ga_service.get_top_pages(limit=limit, days=1, mode=mode)
@@ -616,16 +652,15 @@ def get_analytics_graph_data(request):
     
     try:
         user, config = resolve_google_context(request)
-        if not config:
-            raise GoogleIntegrationConfig.DoesNotExist()
-    except (User.DoesNotExist, GoogleIntegrationConfig.DoesNotExist):
+    except User.DoesNotExist:
         return Response({'error': 'Configuration not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    if not config.ga_property_id or not config.ga_credentials_json:
+
+    ga_property_id, ga_credentials = get_effective_ga_config(config)
+    if not ga_property_id or not ga_credentials:
         return Response({'error': 'Google Analytics not configured'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        ga_service = GoogleAnalyticsService(config.ga_credentials_json, config.ga_property_id)
+        ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
         daily_data = ga_service.get_daily_data(days=days, mode=mode)
         if not daily_data:
             daily_data = build_analytics_db_daily_data(user, mode, days)
@@ -646,16 +681,15 @@ def get_search_summary(request):
     
     try:
         user, config = resolve_google_context(request)
-        if not config:
-            raise GoogleIntegrationConfig.DoesNotExist()
-    except (User.DoesNotExist, GoogleIntegrationConfig.DoesNotExist):
+    except User.DoesNotExist:
         return Response({'error': 'Configuration not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    if not config.gsc_site_url or not config.gsc_credentials_json:
+
+    gsc_site_url, gsc_credentials = get_effective_gsc_config(config)
+    if not gsc_site_url or not gsc_credentials:
         return Response({'error': 'Google Search Console not configured'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        gsc_service = GoogleSearchConsoleService(config.gsc_credentials_json, config.gsc_site_url)
+        gsc_service = GoogleSearchConsoleService(gsc_credentials, gsc_site_url)
         data = gsc_service.save_search_data(user, days=days, mode=mode)
         
         return Response({
@@ -707,8 +741,9 @@ def get_top_queries(request):
     
     try:
         if should_refresh_google_data(request):
-            if config and config.gsc_site_url and config.gsc_credentials_json:
-                gsc_service = GoogleSearchConsoleService(config.gsc_credentials_json, config.gsc_site_url)
+            gsc_site_url, gsc_credentials = get_effective_gsc_config(config)
+            if gsc_site_url and gsc_credentials:
+                gsc_service = GoogleSearchConsoleService(gsc_credentials, gsc_site_url)
                 if mode == 'today':
                     live_queries = gsc_service.get_top_queries(limit=limit, days=days, mode=mode)
                     return Response({
@@ -795,16 +830,15 @@ def get_search_pages(request):
     
     try:
         user, config = resolve_google_context(request)
-        if not config:
-            raise GoogleIntegrationConfig.DoesNotExist()
-    except (User.DoesNotExist, GoogleIntegrationConfig.DoesNotExist):
+    except User.DoesNotExist:
         return Response({'error': 'Configuration not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    if not config.gsc_site_url or not config.gsc_credentials_json:
+
+    gsc_site_url, gsc_credentials = get_effective_gsc_config(config)
+    if not gsc_site_url or not gsc_credentials:
         return Response({'error': 'Google Search Console not configured'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        gsc_service = GoogleSearchConsoleService(config.gsc_credentials_json, config.gsc_site_url)
+        gsc_service = GoogleSearchConsoleService(gsc_credentials, gsc_site_url)
         top_pages = gsc_service.get_top_pages(limit=limit, days=days, mode=mode)
         
         # Format les données
@@ -830,16 +864,15 @@ def get_search_graph_data(request):
     
     try:
         user, config = resolve_google_context(request)
-        if not config:
-            raise GoogleIntegrationConfig.DoesNotExist()
-    except (User.DoesNotExist, GoogleIntegrationConfig.DoesNotExist):
+    except User.DoesNotExist:
         return Response({'error': 'Configuration not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    if not config.gsc_site_url or not config.gsc_credentials_json:
+
+    gsc_site_url, gsc_credentials = get_effective_gsc_config(config)
+    if not gsc_site_url or not gsc_credentials:
         return Response({'error': 'Google Search Console not configured'}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        gsc_service = GoogleSearchConsoleService(config.gsc_credentials_json, config.gsc_site_url)
+        gsc_service = GoogleSearchConsoleService(gsc_credentials, gsc_site_url)
         daily_data = gsc_service.get_daily_data(days=days, mode=mode)
         if not daily_data:
             daily_data = build_search_db_daily_data(user, mode, days)

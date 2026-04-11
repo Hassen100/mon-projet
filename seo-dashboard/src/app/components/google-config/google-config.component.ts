@@ -263,7 +263,7 @@ export class GoogleConfigComponent implements OnInit {
   }
 
   testAnalytics(): void {
-    this.analyticsService.getAnalyticsSummary(30, 'period', false).subscribe({
+    this.analyticsService.getAnalyticsSummary(30, 'period', false, this.userId).subscribe({
       next: (data) => {
         this.testResults = { type: 'Analytics', data };
       },

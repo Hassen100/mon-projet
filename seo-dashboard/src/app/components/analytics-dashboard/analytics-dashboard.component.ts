@@ -328,7 +328,7 @@ export class AnalyticsDashboardComponent implements OnInit {
     this.analyticsError = '';
 
     // Récupérer le résumé
-    this.analyticsService.getAnalyticsSummary(this.selectedDays).subscribe(
+    this.analyticsService.getAnalyticsSummary(this.selectedDays, 'period', false, this.userId).subscribe(
       (data) => {
         this.analyticsSummary = data;
         this.analyticsLoading = false;
@@ -340,7 +340,7 @@ export class AnalyticsDashboardComponent implements OnInit {
     );
 
     // Récupérer les pages les plus consultées
-    this.analyticsService.getTopPages(this.selectedDays, 10).subscribe(
+    this.analyticsService.getTopPages(this.selectedDays, 10, 'period', false, this.userId).subscribe(
       (data) => {
         this.topPages = data.pages;
       }
@@ -374,7 +374,7 @@ export class AnalyticsDashboardComponent implements OnInit {
     );
 
     // Récupérer les requêtes les plus performantes
-    this.analyticsService.getTopQueries(this.selectedDays, 10).subscribe(
+    this.analyticsService.getTopQueries(this.selectedDays, 10, 'period', false, this.userId).subscribe(
       (data) => {
         this.topQueries = data.queries;
       }
