@@ -147,3 +147,12 @@ try:
     GSC_CREDENTIALS = json.loads(GSC_CREDENTIALS_JSON) if GSC_CREDENTIALS_JSON else {}
 except (json.JSONDecodeError, ValueError):
     GSC_CREDENTIALS = {}
+
+# REST Framework authentication settings.
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
