@@ -7,11 +7,29 @@ seo-dashboard/node_modules/
 seo-dashboard/dist/
 seo-dashboard/.angular/
 seo-dashboard/dev-server*.log
+seo-dashboard/*live*.log
+seo-dashboard/*live*.out
+seo-dashboard/*live*.err
+seo-dashboard/src/app/components/dashboard/dashboard.component.temp.scss
+seo-dashboard/src/app/components/dashboard/dashboard.component.url.html
 
 backend/django.out.log
 backend/django.err.log
+backend/*live*.log
+backend/*live*.out
+backend/*live*.err
+backend/db.sqlite3
 backend/**/__pycache__/
 backend/**/*.pyc
 
 .DS_Store
 Thumbs.db
+
+# Environment variables - DO NOT COMMIT
+.env
+.env.local
+backend/.env
+test_login.json
+test_login.txt
+sync-service.err.log
+sync-service.out.log

@@ -1,69 +1,101 @@
 <div class="login-container">
-  <div class="logo-section">
-    <div class="logo-icon">SEO</div>
-    <h1 class="logo-title">SEO Pulse Board</h1>
-    <p class="logo-subtitle">Analysez votre trafic SEO en temps reel</p>
-  </div>
-
-  <div class="login-card">
-    <div class="alert" *ngIf="alertMessage" [ngClass]="alertType">
-      {{ alertMessage }}
+  <section class="login-showcase">
+    <div class="logo-section">
+      <div class="logo-icon">SEO</div>
+      <h1 class="logo-title">SEO Pulse Board</h1>
+      <p class="logo-subtitle">Analysez votre trafic SEO en temps reel</p>
     </div>
 
-    <form (ngSubmit)="onLogin()">
-      <div class="form-group">
-        <label class="form-label" for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          class="form-input"
-          placeholder="demo@seopulse.com"
-          [(ngModel)]="email"
-          required
-        />
-        <div class="field-error" *ngIf="emailError">{{ emailError }}</div>
+    <div class="showcase-badge">Pilotage SEO intelligent</div>
+
+    <div class="showcase-copy">
+      <h2>Un dashboard plus clair pour suivre votre croissance organique.</h2>
+      <p>Conservez votre concept actuel, avec une interface plus elegante, plus lisible et plus confiante pour vos utilisateurs.</p>
+    </div>
+
+    <div class="showcase-stats">
+      <div class="showcase-stat">
+        <span class="stat-value">+48%</span>
+        <span class="stat-label">Visibilite SEO</span>
+      </div>
+      <div class="showcase-stat">
+        <span class="stat-value">24/7</span>
+        <span class="stat-label">Suivi continu</span>
+      </div>
+      <div class="showcase-stat">
+        <span class="stat-value">Top 10</span>
+        <span class="stat-label">Pages clefs</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <div class="login-card-intro">
+      <span class="eyebrow">Connexion securisee</span>
+      <h3>Accedez a votre espace SEO</h3>
+      <p>Retrouvez vos analyses, vos KPIs et vos utilisateurs connectes depuis une seule interface.</p>
+    </div>
+
+    <div class="login-card">
+      <div class="alert" *ngIf="alertMessage" [ngClass]="alertType">
+        {{ alertMessage }}
       </div>
 
-      <div class="form-group">
-        <label class="form-label" for="password">Mot de passe</label>
-        <div class="password-field">
+      <form (ngSubmit)="onLogin()">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
           <input
-            [type]="showPassword ? 'text' : 'password'"
-            id="password"
-            name="password"
-            class="form-input password-input"
-            placeholder="********"
-            [(ngModel)]="password"
+            type="email"
+            id="email"
+            name="email"
+            class="form-input"
+            placeholder="demo@seopulse.com"
+            [(ngModel)]="email"
             required
           />
-          <button type="button" class="password-toggle" (click)="togglePasswordVisibility('login')">{{ showPassword ? '🙈' : '👁' }}</button>
+          <div class="field-error" *ngIf="emailError">{{ emailError }}</div>
         </div>
-        <div class="field-error" *ngIf="passwordError">{{ passwordError }}</div>
-      </div>
 
-      <div class="remember-section">
-        <div class="checkbox-group">
-          <input type="checkbox" id="remember" name="remember" class="checkbox-input" [(ngModel)]="remember">
-          <label for="remember" class="checkbox-label">Se souvenir de moi</label>
+        <div class="form-group">
+          <label class="form-label" for="password">Mot de passe</label>
+          <div class="password-field">
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              id="password"
+              name="password"
+              class="form-input password-input"
+              placeholder="********"
+              [(ngModel)]="password"
+              required
+            />
+            <button type="button" class="password-toggle" (click)="togglePasswordVisibility('login')">{{ showPassword ? 'ðŸ™ˆ' : 'ðŸ‘' }}</button>
+          </div>
+          <div class="field-error" *ngIf="passwordError">{{ passwordError }}</div>
         </div>
-        <a href="#" class="forgot-link" (click)="onForgotPassword(); $event.preventDefault()">Mot de passe oublie ?</a>
-      </div>
 
-      <button type="submit" class="submit-btn" [disabled]="isLoading">
-        <span class="btn-text" *ngIf="!isLoading">Se connecter</span>
-        <div class="loading" *ngIf="isLoading"></div>
-      </button>
+        <div class="remember-section">
+          <div class="checkbox-group">
+            <input type="checkbox" id="remember" name="remember" class="checkbox-input" [(ngModel)]="remember">
+            <label for="remember" class="checkbox-label">Se souvenir de moi</label>
+          </div>
+          <a href="#" class="forgot-link" (click)="onForgotPassword(); $event.preventDefault()">Mot de passe oublie ?</a>
+        </div>
 
-      <div class="divider">
-        <span>ou</span>
-      </div>
+        <button type="submit" class="submit-btn" [disabled]="isLoading">
+          <span class="btn-text" *ngIf="!isLoading">Se connecter</span>
+          <div class="loading" *ngIf="isLoading"></div>
+        </button>
 
-      <button type="button" class="create-account-btn" (click)="openRegisterModal()">
-        Creer un compte
-      </button>
-    </form>
-  </div>
+        <div class="divider">
+          <span>ou</span>
+        </div>
+
+        <button type="button" class="create-account-btn" (click)="openRegisterModal()">
+          Creer un compte
+        </button>
+      </form>
+    </div>
+  </section>
 
   <div class="modal-overlay" [class.active]="showModal" (click)="closeRegisterModal()">
     <div class="modal" (click)="$event.stopPropagation()">
@@ -123,7 +155,7 @@
               [(ngModel)]="registerPassword"
               required
             />
-            <button type="button" class="password-toggle" (click)="togglePasswordVisibility('register')">{{ showRegisterPassword ? '🙈' : '👁' }}</button>
+            <button type="button" class="password-toggle" (click)="togglePasswordVisibility('register')">{{ showRegisterPassword ? 'ðŸ™ˆ' : 'ðŸ‘' }}</button>
           </div>
         </div>
 
@@ -139,7 +171,7 @@
               [(ngModel)]="registerConfirm"
               required
             />
-            <button type="button" class="password-toggle" (click)="togglePasswordVisibility('confirm')">{{ showRegisterConfirm ? '🙈' : '👁' }}</button>
+            <button type="button" class="password-toggle" (click)="togglePasswordVisibility('confirm')">{{ showRegisterConfirm ? 'ðŸ™ˆ' : 'ðŸ‘' }}</button>
           </div>
         </div>
 

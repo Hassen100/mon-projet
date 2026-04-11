@@ -77,7 +77,14 @@ export class LoginComponent {
         return this.showAlert(this.toFrenchErrorMessage(data.message), 'error');
       }
 
-      this.persist(email, data.user?.username || email, Boolean(data.user?.is_admin));
+      this.persist({
+        token: data.token || '',
+        email,
+        name: data.user?.username || email,
+        isAdmin: Boolean(data.user?.is_admin),
+        isSuperUser: Boolean(data.user?.is_superuser),
+        userId: data.user?.id ?? 0
+      });
       this.persistRememberChoice(email);
       this.showAlert('Connexion reussie. Redirection...', 'success');
       setTimeout(() => this.goDashboard(), 700);
@@ -131,7 +138,14 @@ export class LoginComponent {
 
       this.email = email;
       this.password = '';
-      this.persist(email, this.registerName.trim(), false);
+      this.persist({
+        token: data.token || '',
+        email,
+        name: data.user?.username || this.registerName.trim() || email,
+        isAdmin: Boolean(data.user?.is_admin),
+        isSuperUser: Boolean(data.user?.is_superuser),
+        userId: data.user?.id ?? 0
+      });
       this.persistRememberChoice(email);
       this.showAlert('Compte cree avec succes. Redirection vers le dashboard...', 'success');
       this.closeRegisterModal();
@@ -205,13 +219,30 @@ export class LoginComponent {
     if (field === 'confirm') this.showRegisterConfirm = !this.showRegisterConfirm;
   }
 
-  private persist(email: string, name: string, isAdmin: boolean): void {
+  private persist(payload: {
+    token: string;
+    email: string;
+    name: string;
+    isAdmin: boolean;
+    isSuperUser: boolean;
+    userId: number;
+  }): void {
     const expiresAt = new Date(Date.now() + 86400000);
-    localStorage.setItem('auth_token', btoa(`${email}:${Date.now()}`));
+    localStorage.setItem('auth_token', JSON.stringify({
+      token: payload.token,
+      email: payload.email,
+      username: payload.name,
+      is_admin: payload.isAdmin,
+      is_superuser: payload.isSuperUser,
+      id: payload.userId,
+      issued_at: new Date().toISOString()
+    }));
     localStorage.setItem('auth_expires', expiresAt.toISOString());
-    localStorage.setItem('user_email', email);
-    localStorage.setItem('user_name', name);
-    localStorage.setItem('user_is_admin', String(isAdmin));
+    localStorage.setItem('user_email', payload.email);
+    localStorage.setItem('user_name', payload.name);
+    localStorage.setItem('user_is_admin', String(payload.isAdmin));
+    localStorage.setItem('user_is_superuser', String(payload.isSuperUser));
+    localStorage.setItem('user_id', String(payload.userId));
   }
 
   private persistRememberChoice(email: string): void {

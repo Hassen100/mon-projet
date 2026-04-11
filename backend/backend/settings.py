@@ -1,7 +1,12 @@
 import os
 from pathlib import Path
+import json
 
 import dj_database_url
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'api',
 ]
@@ -97,3 +103,33 @@ raw_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_csrf_origins.split(',') if origin.strip()]
 
 ENABLE_CREATE_ADMIN_PAGE = os.getenv('ENABLE_CREATE_ADMIN_PAGE', 'True').strip().lower() == 'true'
+
+# Google Analytics & Search Console Configuration
+GA_PROPERTY_ID = os.getenv('GA_PROPERTY_ID', '')
+GA_CREDENTIALS_JSON = os.getenv('GA_CREDENTIALS_JSON', '{}')
+GSC_SITE_URL = os.getenv('GSC_SITE_URL', '')
+GSC_CREDENTIALS_JSON = os.getenv('GSC_CREDENTIALS_JSON', '{}')
+
+# Parse credentials
+try:
+    GA_CREDENTIALS = json.loads(GA_CREDENTIALS_JSON) if GA_CREDENTIALS_JSON else {}
+except (json.JSONDecodeError, ValueError):
+    GA_CREDENTIALS = {}
+
+try:
+    GSC_CREDENTIALS = json.loads(GSC_CREDENTIALS_JSON) if GSC_CREDENTIALS_JSON else {}
+except (json.JSONDecodeError, ValueError):
+    GSC_CREDENTIALS = {}
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}

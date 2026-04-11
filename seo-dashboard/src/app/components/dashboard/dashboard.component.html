@@ -1,224 +1,307 @@
-<header class="header">
-  <div class="header-inner">
-    <div class="header-tag">#SEO-IA</div>
-    <h1 class="header-title">SEO Pulse Board</h1>
-    <p class="header-subtitle">
-      Analysez le trafic organique, les pages cles, le taux de rebond et les mots-cles performants en temps reel.
-    </p>
-  </div>
-
-  <div class="header-meta">
-    <div class="header-status">
-      <div class="status-dot"></div>
-      <span>Derniere sync: {{ currentTime.toLocaleTimeString('fr-FR') }}</span>
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-text">#SEO-IA</span>
+      </div>
+      <div class="subtitle">SEO Pulse Board</div>
     </div>
 
-    <div class="user-pill">
-      <span class="user-avatar">{{ userInitial }}</span>
-      <span class="user-name">{{ userName }}</span>
-    </div>
-  </div>
-</header>
-
-<main class="main">
-  <div class="filter-bar">
-    <div class="filter-grid">
-      <div class="field">
-        <label class="field-label">Debut</label>
-        <input type="date" class="field-input" />
+    <nav class="sidebar-nav">
+      <div class="nav-item active">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">Dashboard</span>
       </div>
-      <div class="field">
-        <label class="field-label">Fin</label>
-        <input type="date" class="field-input" />
-      </div>
-      <div class="field">
-        <label class="field-label">Page</label>
-        <input type="text" class="field-input" placeholder="https://example.com/page" />
-      </div>
-      <div class="field">
-        <label class="field-label">Source</label>
-        <select class="field-input">
-          <option value="all">Toutes</option>
-          <option value="organic">Organique</option>
-          <option value="direct">Direct</option>
-          <option value="referral">Referral</option>
-          <option value="social">Social</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-primary" (click)="applyFilters()">Appliquer filtres</button>
-      <button class="btn btn-outline" (click)="verifyUrl()">Verifier URL</button>
-      <button class="btn btn-outline" (click)="syncGoogle()">Sync Google</button>
-      <button class="btn btn-ai" (click)="generateAIRecommendations()">Generer recommandations IA</button>
-      <button *ngIf="isAdmin" class="btn btn-admin" (click)="toggleAuthUsers()">
-        {{ showAuthUsers ? 'Masquer users auth' : 'Afficher users auth' }}
+      <button type="button" class="nav-item nav-button" (click)="scrollToAIRecommendations()">
+        <span class="nav-icon">✨</span>
+        <span class="nav-text">AI Recommendations</span>
       </button>
-      <button class="btn btn-ghost" (click)="logout()">Deconnexion</button>
-    </div>
-  </div>
+    </nav>
 
-  <section class="admin-panel" *ngIf="isAdmin && showAuthUsers">
-    <div class="admin-panel-header">
-      <div>
-        <div class="admin-kicker">Admin</div>
-        <h2 class="admin-title">Utilisateurs deja connectes</h2>
-        <p class="admin-subtitle">Liste des comptes Django qui ont deja une date de connexion.</p>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ userInitial }}</div>
+        <div class="user-details">
+          <div class="user-name">{{ userName }}</div>
+          <div class="user-role">Administrator</div>
+        </div>
       </div>
-      <button class="btn btn-outline" (click)="refreshAuthUsers()">Actualiser</button>
+      <button class="logout-btn" (click)="logout()">Déconnexion</button>
     </div>
+  </aside>
 
-    <div class="admin-state" *ngIf="isLoadingAuthUsers">Chargement des utilisateurs...</div>
-    <div class="admin-state admin-error" *ngIf="authUsersError">{{ authUsersError }}</div>
-
-    <div class="admin-table-wrap" *ngIf="!isLoadingAuthUsers && !authUsersError">
-      <table>
-        <thead>
-          <tr>
-            <th>Utilisateur</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Derniere connexion</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let authUser of authUsers">
-            <td>{{ authUser.username }}</td>
-            <td>{{ authUser.email }}</td>
-            <td>
-              <span class="badge" [ngClass]="authUser.is_admin ? 'badge-up' : 'badge-flat'">
-                {{ authUser.is_admin ? 'Admin' : 'User' }}
-              </span>
-            </td>
-            <td>{{ formatLastLogin(authUser.last_login) }}</td>
-          </tr>
-          <tr *ngIf="authUsers.length === 0">
-            <td colspan="4">Aucun utilisateur connecte auparavant.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Sessions</div>
-      <div class="kpi-value" id="sessions">{{ kpiData.sessions.toLocaleString('fr-FR') }}</div>
-      <div class="kpi-delta delta-up">+{{ randomBetween(4, 18) }}% vs periode prec.</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Utilisateurs</div>
-      <div class="kpi-value" id="users">{{ kpiData.users.toLocaleString('fr-FR') }}</div>
-      <div class="kpi-delta delta-up">+{{ randomBetween(2, 12) }}% vs periode prec.</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Pages vues</div>
-      <div class="kpi-value" id="pageviews">{{ kpiData.pageviews.toLocaleString('fr-FR') }}</div>
-      <div class="kpi-delta delta-up">+{{ randomBetween(5, 22) }}% vs periode prec.</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Taux de rebond moyen</div>
-      <div class="kpi-value">{{ kpiData.bounceRate }}%</div>
-      <div class="kpi-delta delta-down">-{{ randomBetween(1, 6) }}% vs periode prec.</div>
-    </div>
-  </div>
-
-  <div class="chart-grid">
-    <div class="chart-card">
-      <h3 class="chart-title">Trafic organique dans le temps</h3>
-      <div class="chart-wrap">
-        <canvas id="trafficChart"></canvas>
+  <main class="main-content">
+    <header class="content-header">
+      <div class="header-left">
+        <span class="page-kicker">SEO Pulse Board</span>
+        <h1 class="page-title">Dashboard Overview</h1>
+        <p class="page-description">Vue d'ensemble des performances SEO et du trafic organique</p>
       </div>
-    </div>
-
-    <div class="chart-card">
-      <h3 class="chart-title">Top mots-cles (clics)</h3>
-      <div class="chart-wrap">
-        <canvas id="keywordsChart"></canvas>
+      <div class="header-right">
+        <button
+          *ngIf="isSuperUser"
+          class="admin-btn gold-admin"
+          (click)="toggleAuthUsers()"
+          title="Voir tous les utilisateurs authentifiés">
+          <span class="admin-icon">👑</span>
+          <span class="admin-text">Afficher users auth</span>
+        </button>
+        <div class="period-selector">
+          <select [(ngModel)]="selectedPeriod" (change)="onPeriodChange()" class="period-select">
+            <option [ngValue]="0">Aujourd'hui</option>
+            <option [ngValue]="-1">Hier</option>
+            <option [ngValue]="7">7 derniers jours</option>
+            <option [ngValue]="30">30 derniers jours</option>
+          </select>
+        </div>
+        <button
+          class="refresh-btn"
+          (click)="refreshDashboard(true)"
+          [disabled]="isLoadingKPIs || isLoadingPages || isLoadingKeywords || isLoadingSearchConsole || isLoadingRecommendations">
+          <span *ngIf="!isLoadingKPIs && !isLoadingSearchConsole && !isLoadingRecommendations">Actualiser</span>
+          <span *ngIf="isLoadingKPIs || isLoadingSearchConsole || isLoadingRecommendations" class="loading-spinner">⟳</span>
+        </button>
       </div>
-    </div>
-  </div>
+    </header>
 
-  <section class="ai-section" *ngIf="showRecommendations">
-    <div class="ai-header">
-      <div class="ai-icon">AI</div>
-      <div>
-        <h2 class="ai-title">Recommendations IA</h2>
-        <p class="ai-subtitle">Generees par analyse NLP des tendances de trafic</p>
+    <section class="kpi-section">
+      <div class="overview-banner">
+        <div class="overview-copy">
+          <span class="overview-chip">Vue executive</span>
+          <h2>Vos indicateurs prioritaires, vos tendances et vos pages clefs en un coup d'oeil.</h2>
+        </div>
+        <div class="overview-metrics">
+          <div class="overview-metric">
+            <span class="overview-label">Sessions</span>
+            <strong>{{ sessions }}</strong>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-label">Users</span>
+            <strong>{{ users }}</strong>
+          </div>
+          <div class="overview-metric">
+            <span class="overview-label">Pages vues</span>
+            <strong>{{ pageViews }}</strong>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="ai-grid">
-      <article class="ai-card" *ngFor="let recommendation of aiRecommendations" [ngClass]="'priority-' + recommendation.priority">
-        <div class="ai-card-icon">{{ recommendation.icon }}</div>
-        <h3>{{ recommendation.title }}</h3>
-        <p>{{ recommendation.description }}</p>
-        <span class="priority-badge" [ngClass]="'badge-' + recommendation.priority">{{ recommendation.priorityLabel }}</span>
-      </article>
-    </div>
-  </section>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-icon">👥</span>
+            <span class="kpi-title">Sessions</span>
+          </div>
+          <div class="kpi-value">{{ sessions }}</div>
+          <div class="kpi-change positive">Google Analytics</div>
+        </div>
 
-  <div class="bottom-grid">
-    <div class="table-card">
-      <h3 class="table-title">Pages les plus consultees</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Page</th>
-            <th>Vues</th>
-            <th>Trend</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let page of topPages">
-            <td style="color: var(--teal-light)">{{ page.page }}</td>
-            <td>{{ page.views.toLocaleString('fr-FR') }}</td>
-            <td>
-              <span class="badge" [ngClass]="{
-                'badge-up': page.trend === 'up',
-                'badge-down': page.trend === 'down',
-                'badge-flat': page.trend === 'flat'
-              }">
-                {{ page.trend === 'up' ? 'Hausse' : page.trend === 'down' ? 'Baisse' : 'Stable' }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-icon">👤</span>
+            <span class="kpi-title">Utilisateurs</span>
+          </div>
+          <div class="kpi-value">{{ users }}</div>
+          <div class="kpi-change positive">Google Analytics</div>
+        </div>
 
-    <div class="table-card">
-      <h3 class="table-title">Mots-cles performants</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Mot-cle</th>
-            <th>Position</th>
-            <th>CTR</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let kw of topKeywords">
-            <td>{{ kw.keyword }}</td>
-            <td>
-              <span [style.color]="kw.position <= 5 ? 'var(--accent)' : kw.position <= 15 ? 'var(--yellow)' : 'var(--warn)'">
-                #{{ kw.position }}
-              </span>
-            </td>
-            <td>{{ kw.ctr }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-icon">📄</span>
+            <span class="kpi-title">Pages vues</span>
+          </div>
+          <div class="kpi-value">{{ pageViews }}</div>
+          <div class="kpi-change positive">Google Analytics</div>
+        </div>
 
-    <div class="chart-card">
-      <h3 class="chart-title">Rebond par source</h3>
-      <div class="chart-wrap">
-        <canvas id="bounceChart"></canvas>
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-icon">📊</span>
+            <span class="kpi-title">Taux de rebond</span>
+          </div>
+          <div class="kpi-value">{{ bounceRate }}%</div>
+          <div class="kpi-change positive">Google Analytics</div>
+        </div>
       </div>
-    </div>
-  </div>
-</main>
 
-<footer>SEO Pulse Board - Projet #SEO-IA - Angular · Chart.js · Google Analytics API · NLP</footer>
+      <div class="search-console-panel">
+        <div class="search-console-copy">
+          <span class="overview-chip search-chip">Google Search Console</span>
+          <h3>Les performances SEO de recherche sont maintenant visibles dans ce dashboard.</h3>
+          <p>Clics, impressions, CTR moyen et position moyenne suivent la même période que le sélecteur.</p>
+        </div>
+        <div class="search-console-metrics">
+          <div class="search-console-metric">
+            <span class="search-console-label">Clics</span>
+            <strong>{{ searchClicks }}</strong>
+          </div>
+          <div class="search-console-metric">
+            <span class="search-console-label">Impressions</span>
+            <strong>{{ searchImpressions }}</strong>
+          </div>
+          <div class="search-console-metric">
+            <span class="search-console-label">CTR moyen</span>
+            <strong>{{ searchCtr }}%</strong>
+          </div>
+          <div class="search-console-metric">
+            <span class="search-console-label">Position moyenne</span>
+            <strong>{{ searchPosition }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-recommendations-panel" id="ai-recommendations">
+        <div class="ai-panel-header">
+          <div class="ai-panel-copy">
+            <span class="overview-chip ai-chip">AI Recommendations</span>
+            <h3>Recommandations SEO IA</h3>
+            <p>4 catégories basées sur vos données Analytics et Search Console.</p>
+          </div>
+        </div>
+
+        <div class="ai-loading" *ngIf="isLoadingRecommendations">
+          Génération des recommandations IA...
+        </div>
+
+        <div class="ai-categories-grid" *ngIf="!isLoadingRecommendations && recommendationCategories.length > 0">
+          <div class="ai-category-card" *ngFor="let category of recommendationCategories">
+            <div class="ai-category-head">
+              <span class="ai-category-icon">{{ category.icon }}</span>
+              <div>
+                <h4>{{ category.title }}</h4>
+                <p>{{ category.subtitle }}</p>
+              </div>
+            </div>
+
+            <div class="ai-category-list">
+              <div class="ai-category-item" *ngFor="let item of category.items">
+                <span class="ai-dot"></span>
+                <span>{{ item }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="charts-section">
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Trafic organique</h3>
+            <div class="chart-actions">
+              <button class="chart-action-btn">🗓</button>
+              <button class="chart-action-btn">📊</button>
+            </div>
+          </div>
+          <div class="chart-content">
+            <canvas id="trafficChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Google Search Console</h3>
+            <div class="chart-actions">
+              <button class="chart-action-btn">🗓</button>
+              <button class="chart-action-btn">📊</button>
+            </div>
+          </div>
+          <div class="chart-content">
+            <canvas id="searchConsoleChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Pages les plus visitées</h3>
+            <div class="chart-actions">
+              <button class="chart-action-btn">🗓</button>
+              <button class="chart-action-btn">📊</button>
+            </div>
+          </div>
+          <div class="chart-content">
+            <div class="pages-list pages-list-scroll" *ngIf="topPages.length > 0">
+              <div class="page-item" *ngFor="let page of topPages; let i = index">
+                <div class="page-rank">{{ i + 1 }}</div>
+                <div class="page-info">
+                  <div class="page-path">{{ page.page_path }}</div>
+                  <div class="page-views">{{ page.views }} vues</div>
+                </div>
+                <div class="page-trend up">↑</div>
+              </div>
+            </div>
+            <div *ngIf="topPages.length === 0" class="no-data">
+              Aucune donnée disponible
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Mots-clés performants</h3>
+            <div class="chart-actions">
+              <button class="chart-action-btn">🗓</button>
+              <button class="chart-action-btn">📊</button>
+            </div>
+          </div>
+          <div class="chart-content">
+            <div class="keywords-list" *ngIf="topKeywords.length > 0">
+              <div class="keyword-item" *ngFor="let kw of topKeywords; let i = index">
+                <div class="keyword-rank">{{ i + 1 }}</div>
+                <div class="keyword-info">
+                  <div class="keyword-text">{{ kw.query }}</div>
+                  <div class="keyword-stats">
+                    <span class="keyword-position">Position {{ kw.position }}</span>
+                    <span class="keyword-ctr">{{ kw.ctr }}</span>
+                  </div>
+                </div>
+                <div class="keyword-trend up">↑</div>
+              </div>
+            </div>
+            <div *ngIf="topKeywords.length === 0" class="no-data">
+              Aucune donnée disponible
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-users-section" *ngIf="isSuperUser && showAuthUsers">
+      <div class="auth-users-card">
+        <div class="card-header">
+          <h3>Utilisateurs authentifiés</h3>
+          <button class="close-btn" (click)="toggleAuthUsers()">✕</button>
+        </div>
+        <div class="card-content">
+          <div class="users-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Dernière connexion</th>
+                  <th>Admin</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of authUsers">
+                  <td>{{ user.id }}</td>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ user.last_login || 'Jamais' }}</td>
+                  <td>
+                    <span class="admin-badge" [class.admin]="user.is_admin">
+                      {{ user.is_admin ? 'Oui' : 'Non' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
