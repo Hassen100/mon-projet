@@ -17,7 +17,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-seo-dashboard-dev-k
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() == 'true'
 
-raw_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')    
+raw_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,.onrender.com')    
 ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(',') if host.strip()]
 
 INSTALLED_APPS = [
@@ -125,3 +125,4 @@ try:
     GSC_CREDENTIALS = json.loads(GSC_CREDENTIALS_JSON) if GSC_CREDENTIALS_JSON else {}
 except (json.JSONDecodeError, ValueError):
     GSC_CREDENTIALS = {}
+
