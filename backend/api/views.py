@@ -521,8 +521,6 @@ def pagespeed_insights(request):
         return Response({'message': 'Invalid strategy. Use "mobile" or "desktop"'}, status=status.HTTP_400_BAD_REQUEST)
 
     api_key = (getattr(settings, 'PAGESPEED_API_KEY', '') or '').strip()
-    if not api_key:
-        return Response({'message': 'PageSpeed API key is not configured on server'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     cache_key_raw = f'pagespeed::{normalized_url}::{strategy}'
     cache_key = 'ps_' + hashlib.sha256(cache_key_raw.encode('utf-8')).hexdigest()
@@ -546,12 +544,14 @@ def pagespeed_insights(request):
     params = [
         ('url', normalized_url),
         ('strategy', strategy),
-        ('key', api_key),
         ('category', 'performance'),
         ('category', 'accessibility'),
         ('category', 'best-practices'),
         ('category', 'seo'),
     ]
+
+    if api_key:
+        params.append(('key', api_key))
 
     request_headers = {
         'User-Agent': 'SEO-Dashboard-Backend/1.0',
