@@ -16,6 +16,7 @@ from .views import (
     get_search_pages,
     get_search_graph_data,
     get_analytics_data,
+    pagespeed_insights,
     analyze_url,
     get_url_history,
     recommend_page,
@@ -41,6 +42,9 @@ urlpatterns = [
     path('search/top-queries/', get_top_queries, name='search-top-queries'),
     path('search/pages/', get_search_pages, name='search-pages'),
     path('search/graph/', get_search_graph_data, name='search-graph'),
+
+    # PageSpeed endpoint
+    path('pagespeed/', pagespeed_insights, name='pagespeed-insights'),
     
     # URL Analysis endpoints
     path('analyze-url/', analyze_url, name='analyze-url'),

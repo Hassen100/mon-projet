@@ -12,6 +12,10 @@
         <span class="nav-icon">📊</span>
         <span class="nav-text">Dashboard</span>
       </div>
+      <button type="button" class="nav-item nav-button" (click)="openPageSpeed()">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-text">PageSpeed</span>
+      </button>
       <button type="button" class="nav-item nav-button" (click)="scrollToAIRecommendations()">
         <span class="nav-icon">✨</span>
         <span class="nav-text">AI Recommendations</span>
@@ -23,7 +27,7 @@
         <div class="user-avatar">{{ userInitial }}</div>
         <div class="user-details">
           <div class="user-name">{{ userName }}</div>
-          <div class="user-role">Administrator</div>
+          <div class="user-role">{{ userRoleLabel }}</div>
         </div>
       </div>
       <button class="logout-btn" (click)="logout()">Déconnexion</button>
@@ -83,6 +87,17 @@
             <span class="overview-label">Pages vues</span>
             <strong>{{ pageViews }}</strong>
           </div>
+        </div>
+      </div>
+
+      <div class="pagespeed-spotlight">
+        <div class="pagespeed-copy">
+          <span class="overview-chip pagespeed-chip">PageSpeed</span>
+          <h3>Analyse technique instantanee de vos URLs</h3>
+          <p>Lancez un audit Performance, SEO, Accessibilite et Bonnes pratiques avec un rapport visuel complet.</p>
+        </div>
+        <div class="pagespeed-cta">
+          <button type="button" class="pagespeed-open-btn" (click)="openPageSpeed()">Ouvrir l'analyse PageSpeed</button>
         </div>
       </div>
 

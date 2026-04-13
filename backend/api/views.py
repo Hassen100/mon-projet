@@ -4,6 +4,7 @@ from django.http import Http404
 from django.shortcuts import render
 from django.utils import timezone
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Sum, Avg
 from django.db.models.functions import Coalesce
 from rest_framework.decorators import api_view, permission_classes
@@ -12,6 +13,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 import json
+import hashlib
+import requests
+import time
+from urllib.parse import urlparse, urlunparse
 from .models import (
     GoogleAnalyticsData,
     GoogleAnalyticsPageData,
@@ -349,6 +354,293 @@ def debug_config(request):
         return Response({'error': 'Google config not found for user'}, status=status.HTTP_404_NOT_FOUND)
 
 
+def _is_valid_http_url(value):
+    if not value:
+        return False
+
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return False
+
+    return parsed.scheme in {'http', 'https'} and bool(parsed.netloc)
+
+
+def _extract_web_vitals(report):
+    def simplify_metrics(raw_metrics):
+        metrics = {}
+
+        key_map = {
+            'LARGEST_CONTENTFUL_PAINT_MS': 'lcp',
+            'FIRST_CONTENTFUL_PAINT_MS': 'fcp',
+            'CUMULATIVE_LAYOUT_SHIFT_SCORE': 'cls',
+            'INTERACTION_TO_NEXT_PAINT': 'inp',
+            'FIRST_INPUT_DELAY_MS': 'fid',
+        }
+
+        for source_key, target_key in key_map.items():
+            metric = raw_metrics.get(source_key)
+            if not metric:
+                continue
+
+            metrics[target_key] = {
+                'id': source_key,
+                'percentile': metric.get('percentile'),
+                'category': metric.get('category'),
+                'distributions': metric.get('distributions', []),
+            }
+
+        return metrics
+
+    loading_experience = report.get('loadingExperience', {})
+    origin_loading_experience = report.get('originLoadingExperience', {})
+
+    return {
+        'loadingExperience': {
+            'overallCategory': loading_experience.get('overall_category'),
+            'metrics': simplify_metrics(loading_experience.get('metrics', {})),
+        },
+        'originLoadingExperience': {
+            'overallCategory': origin_loading_experience.get('overall_category'),
+            'metrics': simplify_metrics(origin_loading_experience.get('metrics', {})),
+        },
+    }
+
+
+def _normalize_pagespeed_url(value):
+    try:
+        parsed = urlparse(value.strip())
+    except Exception:
+        return value
+
+    scheme = parsed.scheme.lower()
+    netloc = parsed.netloc.lower()
+    path = parsed.path or '/'
+
+    if path != '/' and path.endswith('/'):
+        path = path.rstrip('/')
+
+    return urlunparse((scheme, netloc, path, '', parsed.query, ''))
+
+
+def _trim_lighthouse_result(lighthouse_result):
+    if not lighthouse_result:
+        return {}
+
+    audits = lighthouse_result.get('audits', {})
+    kept_audit_keys = [
+        'first-contentful-paint',
+        'largest-contentful-paint',
+        'speed-index',
+        'total-blocking-time',
+        'cumulative-layout-shift',
+        'interactive',
+        'render-blocking-resources',
+        'unused-javascript',
+        'unused-css-rules',
+        'image-delivery-insight',
+        'network-requests',
+        'modern-image-formats',
+        'uses-optimized-images',
+        'uses-text-compression',
+        'uses-responsive-images',
+        'server-response-time',
+        'uses-rel-preconnect',
+        'font-display',
+        'viewport',
+        'meta-description',
+        'document-title',
+        'http-status-code',
+        'is-crawlable',
+        'robots-txt',
+        'link-text',
+        'tap-targets',
+        'aria-allowed-attr',
+        'color-contrast',
+        'image-alt',
+        'label',
+        'valid-lang',
+        'errors-in-console',
+        'no-document-write',
+        'third-party-cookies',
+        'uses-http2',
+        'final-screenshot',
+    ]
+
+    trimmed_audits = {}
+    for key in kept_audit_keys:
+        if key not in audits:
+            continue
+
+        audit = audits.get(key) or {}
+        trimmed_audit = {
+            'id': audit.get('id'),
+            'title': audit.get('title'),
+            'score': audit.get('score'),
+            'scoreDisplayMode': audit.get('scoreDisplayMode'),
+            'displayValue': audit.get('displayValue'),
+            'description': audit.get('description'),
+        }
+
+        if key == 'final-screenshot':
+            details = audit.get('details', {}) or {}
+            trimmed_audit['details'] = {'data': details.get('data')}
+
+        trimmed_audits[key] = trimmed_audit
+
+    return {
+        'fetchTime': lighthouse_result.get('fetchTime'),
+        'finalUrl': lighthouse_result.get('finalUrl'),
+        'requestedUrl': lighthouse_result.get('requestedUrl'),
+        'lighthouseVersion': lighthouse_result.get('lighthouseVersion'),
+        'userAgent': lighthouse_result.get('userAgent'),
+        'runWarnings': lighthouse_result.get('runWarnings'),
+        'categories': lighthouse_result.get('categories', {}),
+        'categoryGroups': lighthouse_result.get('categoryGroups', {}),
+        'audits': trimmed_audits,
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pagespeed_insights(request):
+    started = time.perf_counter()
+    target_url = (request.GET.get('url') or '').strip()
+    strategy = (request.GET.get('strategy') or 'mobile').strip().lower()
+    force_refresh = request.GET.get('refresh') in {'1', 'true', 'True'}
+
+    if not target_url:
+        return Response({'message': 'Query param "url" is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not _is_valid_http_url(target_url):
+        return Response({'message': 'Invalid URL. Use a full URL starting with http:// or https://'}, status=status.HTTP_400_BAD_REQUEST)
+
+    normalized_url = _normalize_pagespeed_url(target_url)
+
+    if strategy not in {'mobile', 'desktop'}:
+        return Response({'message': 'Invalid strategy. Use "mobile" or "desktop"'}, status=status.HTTP_400_BAD_REQUEST)
+
+    api_key = (getattr(settings, 'PAGESPEED_API_KEY', '') or '').strip()
+    if not api_key:
+        return Response({'message': 'PageSpeed API key is not configured on server'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    cache_key_raw = f'pagespeed::{normalized_url}::{strategy}'
+    cache_key = 'ps_' + hashlib.sha256(cache_key_raw.encode('utf-8')).hexdigest()
+    stale_cache_key = 'ps_stale_' + hashlib.sha256(cache_key_raw.encode('utf-8')).hexdigest()
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached:
+            cached['cached'] = True
+            cached['analysisDurationMs'] = 0
+            return Response(cached)
+
+        stale_cached = cache.get(stale_cache_key)
+        if stale_cached:
+            stale_cached['cached'] = True
+            stale_cached['staleCache'] = True
+            stale_cached['analysisDurationMs'] = 0
+            return Response(stale_cached)
+
+    endpoint = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed'
+    params = [
+        ('url', normalized_url),
+        ('strategy', strategy),
+        ('key', api_key),
+        ('category', 'performance'),
+        ('category', 'accessibility'),
+        ('category', 'best-practices'),
+        ('category', 'seo'),
+    ]
+
+    request_headers = {
+        'User-Agent': 'SEO-Dashboard-Backend/1.0',
+        'Accept': 'application/json',
+    }
+
+    configured_referer = (getattr(settings, 'PAGESPEED_REQUEST_REFERER', '') or '').strip()
+    if configured_referer:
+        request_headers['Referer'] = configured_referer
+
+    try:
+        google_response = requests.get(endpoint, params=params, headers=request_headers, timeout=70)
+    except requests.RequestException:
+        fallback = cache.get(stale_cache_key)
+        if fallback:
+            fallback['cached'] = True
+            fallback['staleCache'] = True
+            fallback['analysisDurationMs'] = 0
+            return Response(fallback)
+        return Response({'message': 'Failed to reach Google PageSpeed API'}, status=status.HTTP_502_BAD_GATEWAY)
+
+    if google_response.status_code != 200:
+        error_message = 'PageSpeed API request failed'
+        try:
+            error_payload = google_response.json()
+            error_message = error_payload.get('error', {}).get('message') or error_message
+        except ValueError:
+            error_payload = {'raw': google_response.text[:500]}
+
+        response_payload = {
+            'message': error_message,
+            'statusCode': google_response.status_code,
+            'details': error_payload,
+        }
+
+        reason = error_payload.get('error', {}).get('details', [{}])[0].get('reason') if isinstance(error_payload, dict) else None
+        lowered_error_message = (error_message or '').lower()
+        is_referer_blocked = (
+            reason == 'API_KEY_HTTP_REFERRER_BLOCKED'
+            or 'referer' in lowered_error_message
+            or 'referrer' in lowered_error_message
+        )
+
+        if is_referer_blocked:
+            response_payload['message'] = (
+                'La cle API PageSpeed est restreinte par referer HTTP. '
+                'Autorisez ce domaine dans Google Cloud API restrictions ou utilisez une cle serveur.'
+            )
+
+        fallback = cache.get(stale_cache_key)
+        if fallback:
+            fallback['cached'] = True
+            fallback['staleCache'] = True
+            fallback['analysisDurationMs'] = 0
+            return Response(fallback)
+
+        return Response(response_payload, status=status.HTTP_502_BAD_GATEWAY)
+
+    try:
+        payload = google_response.json()
+    except ValueError:
+        return Response({'message': 'Invalid response from PageSpeed API'}, status=status.HTTP_502_BAD_GATEWAY)
+
+    lighthouse_result = payload.get('lighthouseResult', {})
+    lighthouse_categories = lighthouse_result.get('categories', {})
+
+    categories = {
+        'performance': int(round((lighthouse_categories.get('performance', {}).get('score') or 0) * 100)),
+        'seo': int(round((lighthouse_categories.get('seo', {}).get('score') or 0) * 100)),
+        'accessibility': int(round((lighthouse_categories.get('accessibility', {}).get('score') or 0) * 100)),
+        'bestPractices': int(round((lighthouse_categories.get('best-practices', {}).get('score') or 0) * 100)),
+    }
+
+    clean_response = {
+        'url': normalized_url,
+        'strategy': strategy,
+        'cached': False,
+        'analysisDurationMs': int((time.perf_counter() - started) * 1000),
+        'analysisTimestamp': payload.get('analysisUTCTimestamp'),
+        'categories': categories,
+        'coreWebVitals': _extract_web_vitals(payload),
+        'lighthouseResult': _trim_lighthouse_result(lighthouse_result),
+    }
+
+    cache.set(cache_key, clean_response, 1800)
+    cache.set(stale_cache_key, clean_response, 86400)
+    return Response(clean_response)
+
+
 @api_view(['GET'])
 def api_root(request):
     """API Root - Liste tous les endpoints disponibles"""
@@ -374,6 +666,9 @@ def api_root(request):
                 'top-queries': '/api/search/top-queries/?user_id=1&days=30&limit=20',
                 'pages': '/api/search/pages/?user_id=1&days=30',
                 'graph-data': '/api/search/graph/?user_id=1&days=30'
+            },
+            'pagespeed': {
+                'analyze': '/api/pagespeed/?url=https://example.com&strategy=mobile'
             },
             'health': '/api/health/'
         },

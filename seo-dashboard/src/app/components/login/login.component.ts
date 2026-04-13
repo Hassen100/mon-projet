@@ -87,7 +87,7 @@ export class LoginComponent {
       });
       this.persistRememberChoice(email);
       this.showAlert('Connexion reussie. Redirection...', 'success');
-      setTimeout(() => this.goDashboard(), 700);
+      void this.goDashboard();
     } catch {
       this.showAlert(this.getNetworkErrorMessage(), 'error');
     } finally {

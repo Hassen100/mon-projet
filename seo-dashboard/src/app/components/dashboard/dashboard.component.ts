@@ -103,12 +103,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showCurlModal = false;
   userToken = '';
+  private recommendationsTimer?: number;
 
   userInitial = 'H';
   userName = 'hassen selmi';
   userEmail = '';
   isAdmin = false;
   isSuperUser = false;
+
+  get userRoleLabel(): string {
+    return this.isSuperUser ? 'Administrateur' : 'Utilisateur';
+  }
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -117,13 +122,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadAuthUsers();
     this.refreshDashboard(true);
   }
 
   ngAfterViewInit() {}
 
   ngOnDestroy() {
+    if (this.recommendationsTimer) {
+      window.clearTimeout(this.recommendationsTimer);
+    }
     this.destroyCharts();
   }
 
@@ -166,7 +173,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.bounceRate = data.bounce_rate || 0;
         this.avgSessionDuration = data.avg_session_duration || 0;
         this.isLoadingKPIs = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
         this.createBounceChart();
         this.loadTrafficChart();
@@ -174,7 +181,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       error: (error: any) => {
         console.error('Erreur lors du chargement des KPIs:', error);
         this.isLoadingKPIs = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
       }
     });
@@ -199,7 +206,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.searchImpressions = summary.impressions || 0;
         this.searchCtr = summary.ctr || 0;
         this.searchPosition = summary.position || 0;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
         this.loadSearchConsoleChart();
       },
@@ -211,7 +218,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.searchPosition = 0;
         this.searchData = [];
         this.isLoadingSearchConsole = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
         this.createSearchConsoleChart();
       }
@@ -254,13 +261,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           trend: 'flat'
         }));
         this.isLoadingPages = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des pages:', error);
         this.isLoadingPages = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
       }
     });
@@ -276,17 +283,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           ctr: keyword.ctr
         }));
         this.isLoadingKeywords = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
         this.createKeywordsChart();
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des mots-clés:', error);
         this.isLoadingKeywords = false;
-        this.updateRecommendations();
+        this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private scheduleRecommendationsUpdate(): void {
+    if (!this.userToken || this.sessions <= 0) {
+      this.recommendationCategories = [];
+      this.isLoadingRecommendations = false;
+      return;
+    }
+
+    if (this.recommendationsTimer) {
+      window.clearTimeout(this.recommendationsTimer);
+    }
+
+    this.recommendationsTimer = window.setTimeout(() => {
+      this.updateRecommendations();
+    }, 150);
   }
 
   private updateRecommendations(): void {
@@ -439,6 +462,22 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  openAiModel(): void {
+    void this.router.navigateByUrl('/ai-model').then((ok) => {
+      if (!ok && isPlatformBrowser(this.platformId)) {
+        window.location.hash = '#/ai-model';
+      }
+    });
+  }
+
+  openPageSpeed(): void {
+    void this.router.navigateByUrl('/pagespeed').then((ok) => {
+      if (!ok && isPlatformBrowser(this.platformId)) {
+        window.location.hash = '#/pagespeed';
+      }
+    });
   }
 
   initializeCharts(): void {

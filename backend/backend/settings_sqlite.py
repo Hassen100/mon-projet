@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'api',
 ]
@@ -98,9 +99,15 @@ GA_CREDENTIALS = json.loads(ga_creds) if ga_creds != '{}' else {}
 GSC_SITE_URL = os.getenv('GSC_SITE_URL', '')
 gsc_creds = os.getenv('GSC_CREDENTIALS_JSON', '{}')
 GSC_CREDENTIALS = json.loads(gsc_creds) if gsc_creds != '{}' else {}
+PAGESPEED_API_KEY = os.getenv('PAGESPEED_API_KEY', '')
+PAGESPEED_REQUEST_REFERER = os.getenv('PAGESPEED_REQUEST_REFERER', '').strip()
 
 # Django REST Framework
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 }
