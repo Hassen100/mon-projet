@@ -573,6 +573,15 @@ def pagespeed_insights(request):
             return Response(fallback)
         return Response({'message': 'Failed to reach Google PageSpeed API'}, status=status.HTTP_502_BAD_GATEWAY)
 
+    if google_response.status_code == 429 and api_key:
+        retry_params = [item for item in params if item[0] != 'key']
+        try:
+            retry_response = requests.get(endpoint, params=retry_params, headers=request_headers, timeout=70)
+            if retry_response.status_code == 200:
+                google_response = retry_response
+        except requests.RequestException:
+            pass
+
     if google_response.status_code != 200:
         error_message = 'PageSpeed API request failed'
         try:
