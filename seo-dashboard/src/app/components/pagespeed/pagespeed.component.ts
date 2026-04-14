@@ -673,6 +673,7 @@ export class PageSpeedComponent {
   loading = false;
   errorMessage = '';
   result: LocalPageSpeedResponse | null = null;
+  private readonly pageSpeedTimeoutMs = 35000;
 
   ngOnInit(): void {}
 
@@ -720,18 +721,7 @@ export class PageSpeedComponent {
 
     try {
       const endpoint = `${this.api}/pagespeed/?url=${encodeURIComponent(normalizedUrl)}&strategy=${this.strategy}`;
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 50000);
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      window.clearTimeout(timeout);
-
-      const data = await this.readJsonSafely(response);
+      const { response, data } = await this.fetchJsonWithTimeout(endpoint, token, this.pageSpeedTimeoutMs);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -759,8 +749,8 @@ export class PageSpeedComponent {
 
       this.writeLocalCache(cacheKey, this.result);
     } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        this.errorMessage = 'Timeout: analyse trop longue (>50s). Reessayez; si le probleme persiste, verifiez la configuration PageSpeed sur Render.';
+      if (error?.name === 'AbortError' || error?.message === 'PAGESPEED_TIMEOUT') {
+        this.errorMessage = 'Timeout: analyse trop longue (>35s). Reessayez; si le probleme persiste, verifiez la configuration PageSpeed sur Render.';
       } else {
         this.errorMessage = 'Impossible de joindre le backend PageSpeed';
       }
@@ -777,6 +767,39 @@ export class PageSpeedComponent {
     } catch {
       return {};
     }
+  }
+
+  private async fetchJsonWithTimeout(
+    endpoint: string,
+    token: string,
+    timeoutMs: number,
+  ): Promise<{ response: Response; data: Record<string, any> }> {
+    const controller = new AbortController();
+
+    const fetchPromise = (async () => {
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      const data = await this.readJsonSafely(response);
+      return { response, data };
+    })();
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      window.setTimeout(() => {
+        controller.abort();
+        reject(new Error('PAGESPEED_TIMEOUT'));
+      }, timeoutMs);
+    });
+
+    return (await Promise.race([fetchPromise, timeoutPromise])) as {
+      response: Response;
+      data: Record<string, any>;
+    };
   }
 
   private redirectToLogin(): void {
