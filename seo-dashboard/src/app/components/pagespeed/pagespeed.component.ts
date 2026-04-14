@@ -666,6 +666,7 @@ export class PageSpeedComponent {
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly api = getApiBaseUrl();
+  private authRedirecting = false;
 
   url = 'https://seo-ia123.vercel.app/';
   strategy: 'mobile' | 'desktop' = 'mobile';
@@ -708,10 +709,19 @@ export class PageSpeedComponent {
       };
     }
 
+    // Safety net: if abort is not honored by runtime/network stack, unblock UI anyway.
+    const hardStopTimer = window.setTimeout(() => {
+      if (!this.loading) {
+        return;
+      }
+      this.loading = false;
+      this.errorMessage = 'Analyse interrompue: delai depasse. Reessayez dans quelques secondes.';
+    }, 65000);
+
     try {
       const endpoint = `${this.api}/pagespeed/?url=${encodeURIComponent(normalizedUrl)}&strategy=${this.strategy}`;
       const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 45000);
+      const timeout = window.setTimeout(() => controller.abort(), 50000);
       const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Token ${token}`,
@@ -721,10 +731,21 @@ export class PageSpeedComponent {
       });
       window.clearTimeout(timeout);
 
-      const data = await response.json();
+      const data = await this.readJsonSafely(response);
 
       if (!response.ok) {
-        this.errorMessage = data.message || data.detail || 'Erreur API PageSpeed';
+        if (response.status === 401) {
+          this.redirectToLogin();
+          this.errorMessage = 'Session expiree ou invalide. Merci de vous reconnecter.';
+          this.result = null;
+          return;
+        }
+
+        const rawMessage = data['message'] || data['detail'] || 'Erreur API PageSpeed';
+        const lowered = String(rawMessage).toLowerCase();
+        this.errorMessage = lowered.includes('quota exceeded')
+          ? 'Quota Google PageSpeed depasse sur le serveur. Mettez a jour la cle API PageSpeed ou ses quotas sur Render.'
+          : rawMessage;
         this.result = null;
         return;
       }
@@ -739,14 +760,39 @@ export class PageSpeedComponent {
       this.writeLocalCache(cacheKey, this.result);
     } catch (error: any) {
       if (error?.name === 'AbortError') {
-        this.errorMessage = 'Timeout: analyse trop longue (>45s). Reessayez; si la cle est restreinte, verifiez les restrictions Google Cloud.';
+        this.errorMessage = 'Timeout: analyse trop longue (>50s). Reessayez; si le probleme persiste, verifiez la configuration PageSpeed sur Render.';
       } else {
         this.errorMessage = 'Impossible de joindre le backend PageSpeed';
       }
       this.result = null;
     } finally {
+      window.clearTimeout(hardStopTimer);
       this.loading = false;
     }
+  }
+
+  private async readJsonSafely(response: Response): Promise<Record<string, any>> {
+    try {
+      return (await response.json()) as Record<string, any>;
+    } catch {
+      return {};
+    }
+  }
+
+  private redirectToLogin(): void {
+    if (!isPlatformBrowser(this.platformId) || this.authRedirecting) {
+      return;
+    }
+
+    this.authRedirecting = true;
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_expires');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('user_is_admin');
+    localStorage.removeItem('user_is_superuser');
+    localStorage.removeItem('user_id');
+    void this.router.navigate(['/login']);
   }
 
   private getToken(): string {
