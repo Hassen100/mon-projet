@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, inject, PLATFORM_ID } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { timeout } from 'rxjs';
 import {
   ContentAnalysisDetail,
@@ -39,6 +40,7 @@ export class ContentOptimizerComponent implements OnInit, OnDestroy {
 
   private refreshPollTimer: ReturnType<typeof setInterval> | null = null;
   private refreshPollAttempts = 0;
+  private authRedirecting = false;
 
   userInitial = 'H';
   userName = 'hassen selmi';
@@ -92,7 +94,7 @@ export class ContentOptimizerComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.loading = false;
-        this.errorMessage = error?.error?.message || 'Impossible de charger les analyses de contenu.';
+        this.errorMessage = this.toUiErrorMessage(error, 'Impossible de charger les analyses de contenu.');
       },
     });
   }
@@ -119,7 +121,7 @@ export class ContentOptimizerComponent implements OnInit, OnDestroy {
         this.detailLoading = false;
       },
       error: (error) => {
-        this.detailErrorMessage = error?.error?.error || 'Impossible de charger le detail (timeout ou acces refuse).';
+        this.detailErrorMessage = this.toUiErrorMessage(error, 'Impossible de charger le detail (timeout ou acces refuse).');
         this.detailLoading = false;
       },
     });
@@ -146,7 +148,7 @@ export class ContentOptimizerComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.refreshing = false;
-        this.refreshMessage = error?.error?.message || 'La relance a echoue.';
+        this.refreshMessage = this.toUiErrorMessage(error, 'La relance a echoue.');
       },
     });
   }
@@ -184,7 +186,7 @@ export class ContentOptimizerComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.refreshing = false;
-        this.refreshMessage = error?.error?.message || 'La relance a echoue.';
+        this.refreshMessage = this.toUiErrorMessage(error, 'La relance a echoue.');
       },
     });
   }
@@ -248,6 +250,33 @@ export class ContentOptimizerComponent implements OnInit, OnDestroy {
     }
 
     return raw.endsWith('/') ? raw.slice(0, -1) : raw;
+  }
+
+  private toUiErrorMessage(error: unknown, fallback: string): string {
+    const httpError = error as Partial<HttpErrorResponse> | null;
+    if (httpError?.status === 401) {
+      this.redirectToLogin();
+      return 'Session expiree ou invalide. Merci de vous reconnecter.';
+    }
+
+    const payload = httpError?.error as { message?: string; error?: string } | undefined;
+    return payload?.message || payload?.error || fallback;
+  }
+
+  private redirectToLogin(): void {
+    if (this.authRedirecting || !isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.authRedirecting = true;
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_expires');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('user_is_admin');
+    localStorage.removeItem('user_is_superuser');
+    localStorage.removeItem('user_id');
+    void this.router.navigate(['/login']);
   }
 
   logout(): void {
