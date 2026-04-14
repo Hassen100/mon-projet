@@ -123,3 +123,27 @@ class GoogleIntegrationConfig(models.Model):
     def __str__(self):
         return f"Google Config for {self.user.username}"
 
+
+class ContentAnalysis(models.Model):
+    """Stores semantic and technical analysis for a page URL."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='content_analyses')
+    url = models.URLField(max_length=500)
+    semantic_score = models.PositiveIntegerField(default=0)
+    technical_score = models.PositiveIntegerField(default=0)
+    recommendations = models.JSONField(default=list, blank=True)
+    technical_issues = models.JSONField(default=dict, blank=True)
+    competitor_data = models.JSONField(default=dict, blank=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-last_updated']
+        unique_together = ('user', 'url')
+        indexes = [
+            models.Index(fields=['user', '-last_updated']),
+            models.Index(fields=['url']),
+        ]
+
+    def __str__(self):
+        return f"Content analysis for {self.url}"
+

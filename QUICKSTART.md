@@ -304,3 +304,50 @@ Si vous avez besoin d'aide:
 2. Consulter [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) pour plus de détails
 3. Vérifier les logs Django/Angular (F12 pour browser)
 4. Tester les endpoints avec Postman
+
+---
+
+## Content Optimizer (Nouveau module IA)
+
+### 1) Installer les dépendances backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### 2) Exécuter les migrations
+
+```bash
+cd backend
+python manage.py migrate
+```
+
+### 3) Configurer les variables d'environnement SERP
+
+Dans `.env`:
+
+- `GOOGLE_CSE_API_KEY`
+- `GOOGLE_CSE_CX`
+- `SERP_PROVIDER=google_cse` (ou `serpapi`)
+- `SERPAPI_API_KEY` (si provider `serpapi`)
+
+Si les clés sont absentes, un fallback mock est utilisé pour permettre le calcul des scores.
+
+### 4) Rafraîchir les analyses manuellement
+
+```bash
+cd backend
+python manage.py refresh_content_analysis --urls=50
+```
+
+### 5) Endpoints API du module
+
+- `GET /api/content-analysis/`
+- `GET /api/content-analysis/<id>/`
+- `POST /api/content-analysis/refresh/`
+
+### 6) Interface Angular
+
+- Route: `/content-optimizer`
+- Menu latéral: bouton `Content Optimizer`

@@ -20,6 +20,9 @@ from .views import (
     analyze_url,
     get_url_history,
     recommend_page,
+    content_analysis_list,
+    content_analysis_detail,
+    refresh_content_analysis,
 )
 
 urlpatterns = [
@@ -52,4 +55,9 @@ urlpatterns = [
 
     # AI recommendation endpoints
     path('ai/recommend/page/', recommend_page, name='recommend-page'),
+
+    # Content optimizer endpoints
+    path('content-analysis/', content_analysis_list, name='content-analysis-list'),
+    path('content-analysis/<int:analysis_id>/', content_analysis_detail, name='content-analysis-detail'),
+    path('content-analysis/refresh/', refresh_content_analysis, name='content-analysis-refresh'),
 ]

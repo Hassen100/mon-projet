@@ -16,6 +16,7 @@ import json
 import hashlib
 import requests
 import time
+import threading
 from urllib.parse import urlparse, urlunparse
 from .models import (
     GoogleAnalyticsData,
@@ -23,6 +24,7 @@ from .models import (
     GoogleSearchConsoleData,
     GoogleSearchConsolePageData,
     GoogleIntegrationConfig,
+    ContentAnalysis,
 )
 from .models_url import (
     URLAnalysisData,
@@ -33,12 +35,14 @@ from .google_analytics_service import GoogleAnalyticsService
 from .google_search_console_service import GoogleSearchConsoleService
 from .url_analysis_service import URLAnalysisService
 from .serializers import AnalyticsSerializer, AnalyticsResponseSerializer
+from .serializers_content import ContentAnalysisListSerializer, ContentAnalysisDetailSerializer
 from .serializers_url import URLAnalysisSerializer, URLAnalysisResponseSerializer
 from .serializers_ai import (
     PageRecommendationRequestSerializer,
     PageRecommendationResponseSerializer,
 )
 from .ai_recommendation_service import SEORecommendationService
+from .content_analyzer import refresh_all_analyses
 from datetime import datetime, timedelta
 
 
@@ -678,6 +682,11 @@ def api_root(request):
             },
             'pagespeed': {
                 'analyze': '/api/pagespeed/?url=https://example.com&strategy=mobile'
+            },
+            'content-optimizer': {
+                'list': 'GET /api/content-analysis/',
+                'detail': 'GET /api/content-analysis/<id>/',
+                'refresh': 'POST /api/content-analysis/refresh/'
             },
             'health': '/api/health/'
         },
@@ -1382,3 +1391,85 @@ def recommend_page(request):
     response_serializer = PageRecommendationResponseSerializer(data=response_data)
     response_serializer.is_valid(raise_exception=True)
     return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def content_analysis_list(request):
+    """List content analyses for current user."""
+    user = request.user
+    queryset = ContentAnalysis.objects.filter(user=user).order_by('-last_updated')
+
+    serializer = ContentAnalysisListSerializer(queryset, many=True)
+    analyses = serializer.data
+    avg_semantic_score = 0.0
+    if analyses:
+        avg_semantic_score = round(sum(item['semantic_score'] for item in analyses) / len(analyses), 2)
+
+    return Response(
+        {
+            'count': len(analyses),
+            'average_semantic_score': avg_semantic_score,
+            'results': analyses,
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def content_analysis_detail(request, analysis_id):
+    """Return one content analysis detail."""
+    try:
+        analysis = ContentAnalysis.objects.get(id=analysis_id, user=request.user)
+    except ContentAnalysis.DoesNotExist:
+        return Response({'error': 'Content analysis not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ContentAnalysisDetailSerializer(analysis)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def refresh_content_analysis(request):
+    """Trigger content analyses refresh in background."""
+    max_urls = request.data.get('urls', request.data.get('max_urls', 50))
+    target_url = (request.data.get('target_url') or '').strip()
+    try:
+        max_urls = int(max_urls)
+    except (TypeError, ValueError):
+        max_urls = 50
+    max_urls = max(1, min(max_urls, 200))
+
+    try:
+        user_id = request.user.id
+
+        def _background_refresh():
+            try:
+                background_user = User.objects.filter(id=user_id).first()
+                if background_user is not None:
+                    refresh_all_analyses(max_urls=max_urls, user=background_user, target_url=target_url)
+            except Exception as exc:
+                print(f"Content analysis background refresh failed: {exc}")
+
+        thread = threading.Thread(target=_background_refresh, daemon=True)
+        thread.start()
+
+        return Response(
+            {
+                'message': 'Content analyses refresh started',
+                'result': {
+                    'started': True,
+                    'max_urls': max_urls,
+                    'target_url': target_url,
+                },
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+    except Exception as exc:
+        return Response(
+            {
+                'error': 'Refresh failed',
+                'message': str(exc),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
