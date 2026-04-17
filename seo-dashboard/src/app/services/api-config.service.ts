@@ -27,7 +27,7 @@ export class ApiConfigService {
 
     // GitHub Pages/static hosting: point to deployed backend API
     if (hostname.includes('github.io')) {
-      this.apiBaseUrl = 'https://mon-projet-backend.onrender.com';
+      this.apiBaseUrl = 'https://mon-projet.onrender.com';
       return;
     }
 
@@ -41,7 +41,7 @@ export class ApiConfigService {
     if (hostname.endsWith('onrender.com')) {
       this.apiBaseUrl = `${window.location.protocol}//${hostname}`;
     } else {
-      this.apiBaseUrl = 'https://mon-projet-backend.onrender.com';
+      this.apiBaseUrl = 'https://mon-projet.onrender.com';
     }
 
     console.log('API Base URL:', this.apiBaseUrl);

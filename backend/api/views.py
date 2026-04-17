@@ -855,28 +855,29 @@ def get_analytics_summary(request):
     mode, days = parse_mode_and_days(request)
     
     try:
-        if should_refresh_google_data(request):
-            ga_property_id, ga_credentials = get_effective_ga_config(config)
-            if ga_property_id and ga_credentials:
-                ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
-                if mode in {'today', 'yesterday'}:
-                    saved_data = ga_service.save_analytics_data(user, days=1, mode=mode)
-                    return Response({
-                        'sessions': saved_data['sessions'],
-                        'users': saved_data['active_users'],
-                        'page_views': saved_data['screen_page_views'],
-                        'bounce_rate': round(saved_data['bounce_rate'], 2),
-                        'avg_session_duration': 120
-                    })
-                else:
-                    live_data = ga_service.get_analytics_data(days=days, mode=mode)
-                    return Response({
-                        'sessions': live_data['sessions'],
-                        'users': live_data['active_users'],
-                        'page_views': live_data['screen_page_views'],
-                        'bounce_rate': round(live_data['bounce_rate'], 2),
-                        'avg_session_duration': 120
-                    })
+        force_refresh = should_refresh_google_data(request)
+        ga_property_id, ga_credentials = get_effective_ga_config(config)
+
+        if force_refresh and ga_property_id and ga_credentials:
+            ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
+            if mode in {'today', 'yesterday'}:
+                saved_data = ga_service.save_analytics_data(user, days=1, mode=mode)
+                return Response({
+                    'sessions': saved_data['sessions'],
+                    'users': saved_data['active_users'],
+                    'page_views': saved_data['screen_page_views'],
+                    'bounce_rate': round(saved_data['bounce_rate'], 2),
+                    'avg_session_duration': 120
+                })
+
+            live_data = ga_service.get_analytics_data(days=days, mode=mode)
+            return Response({
+                'sessions': live_data['sessions'],
+                'users': live_data['active_users'],
+                'page_views': live_data['screen_page_views'],
+                'bounce_rate': round(live_data['bounce_rate'], 2),
+                'avg_session_duration': 120
+            })
 
         # Récupérer les données depuis la base MySQL
         if mode in {'today', 'yesterday'}:
@@ -894,6 +895,22 @@ def get_analytics_summary(request):
             ).order_by('-date')
         
         if not analytics_data.exists():
+            # If DB cache is empty, try a live GA fetch automatically.
+            if ga_property_id and ga_credentials:
+                ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
+                if mode in {'today', 'yesterday'}:
+                    live_data = ga_service.save_analytics_data(user, days=1, mode=mode)
+                else:
+                    live_data = ga_service.get_analytics_data(days=days, mode=mode)
+
+                return Response({
+                    'sessions': live_data['sessions'],
+                    'users': live_data['active_users'],
+                    'page_views': live_data['screen_page_views'],
+                    'bounce_rate': round(live_data['bounce_rate'], 2),
+                    'avg_session_duration': 120
+                })
+
             return Response({'error': 'No analytics data found'}, status=status.HTTP_404_NOT_FOUND)
         
         if mode in {'today', 'yesterday'}:
@@ -946,35 +963,27 @@ def get_top_pages(request):
     limit = int(request.GET.get('limit', 20))
     
     try:
-        if should_refresh_google_data(request):
-            ga_property_id, ga_credentials = get_effective_ga_config(config)
-            if ga_property_id and ga_credentials:
-                ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
-                if mode in {'today', 'yesterday'}:
-                    ga_service.save_analytics_data(user, days=1, mode=mode)
-                    live_pages = ga_service.get_top_pages(limit=limit, days=1, mode=mode)
-                    return Response({
-                        'pages': [
-                            {
-                                'page_path': page['page_path'],
-                                'views': page['views'],
-                                'avg_session_duration': 120
-                            }
-                            for page in live_pages
-                        ]
-                    })
-                else:
-                    live_pages = ga_service.get_top_pages(limit=limit, days=days, mode=mode)
-                    return Response({
-                        'pages': [
-                            {
-                                'page_path': page['page_path'],
-                                'views': page['views'],
-                                'avg_session_duration': 120
-                            }
-                            for page in live_pages
-                        ]
-                    })
+        force_refresh = should_refresh_google_data(request)
+        ga_property_id, ga_credentials = get_effective_ga_config(config)
+
+        if force_refresh and ga_property_id and ga_credentials:
+            ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
+            if mode in {'today', 'yesterday'}:
+                ga_service.save_analytics_data(user, days=1, mode=mode)
+                live_pages = ga_service.get_top_pages(limit=limit, days=1, mode=mode)
+            else:
+                live_pages = ga_service.get_top_pages(limit=limit, days=days, mode=mode)
+
+            return Response({
+                'pages': [
+                    {
+                        'page_path': page['page_path'],
+                        'views': page['views'],
+                        'avg_session_duration': 120
+                    }
+                    for page in live_pages
+                ]
+            })
 
         # Récupérer les données depuis la base MySQL
         page_queryset = GoogleAnalyticsPageData.objects.filter(user=user)
@@ -992,6 +1001,20 @@ def get_top_pages(request):
         ).order_by('-total_views')[:limit]
         
         if not pages_data:
+            if ga_property_id and ga_credentials:
+                ga_service = GoogleAnalyticsService(ga_credentials, ga_property_id)
+                live_pages = ga_service.get_top_pages(limit=limit, days=days, mode=mode)
+                return Response({
+                    'pages': [
+                        {
+                            'page_path': page['page_path'],
+                            'views': page['views'],
+                            'avg_session_duration': 120
+                        }
+                        for page in live_pages
+                    ]
+                })
+
             return Response({'pages': []})
         
         # Formater les données

@@ -12,7 +12,7 @@ class GoogleAnalyticsService:
     """Service pour recuperer les donnees Google Analytics."""
 
     def __init__(self, credentials_json, property_id):
-        self.property_id = property_id
+        self.property_id = str(property_id).replace('properties/', '').strip()
 
         if isinstance(credentials_json, str):
             creds_dict = json.loads(credentials_json)
@@ -21,7 +21,6 @@ class GoogleAnalyticsService:
 
         self.credentials, _ = load_credentials_from_dict(creds_dict)
         self.client = BetaAnalyticsDataClient(credentials=self.credentials)
-
     def _get_date_range(self, days=30, mode="period"):
         end_date = datetime.now().date()
         
