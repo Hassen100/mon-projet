@@ -23,6 +23,9 @@ from .views import (
     content_analysis_list,
     content_analysis_detail,
     refresh_content_analysis,
+    ai_chat,
+    ai_quick_analysis,
+    ai_dashboard_context,
 )
 
 urlpatterns = [
@@ -55,6 +58,9 @@ urlpatterns = [
 
     # AI recommendation endpoints
     path('ai/recommend/page/', recommend_page, name='recommend-page'),
+    path('ai/chat/', ai_chat, name='ai-chat'),
+    path('ai/quick-analysis/', ai_quick_analysis, name='ai-quick-analysis'),
+    path('ai/context/', ai_dashboard_context, name='ai-context'),
 
     # Content optimizer endpoints
     path('content-analysis/', content_analysis_list, name='content-analysis-list'),

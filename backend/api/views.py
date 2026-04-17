@@ -40,10 +40,15 @@ from .serializers_url import URLAnalysisSerializer, URLAnalysisResponseSerialize
 from .serializers_ai import (
     PageRecommendationRequestSerializer,
     PageRecommendationResponseSerializer,
+    AIChatMessageSerializer,
+    AIChatResponseSerializer,
+    AIQuickAnalysisSerializer,
 )
 from .ai_recommendation_service import SEORecommendationService
+from .ollama_service import OllamaService
 from .content_analyzer import refresh_all_analyses
 from datetime import datetime, timedelta
+import os
 
 
 def resolve_google_user(request, user_id=None):
@@ -52,13 +57,26 @@ def resolve_google_user(request, user_id=None):
 
     resolved_user_id = user_id or request.GET.get('user_id') or request.data.get('user_id')
     if resolved_user_id:
-        return User.objects.get(id=resolved_user_id)
+        try:
+            return User.objects.get(id=resolved_user_id)
+        except User.DoesNotExist:
+            pass
 
     config = GoogleIntegrationConfig.objects.select_related('user').first()
     if config:
         return config.user
 
-    return User.objects.get(username='test@test.com')
+    # Fallback: Use the first available user or create a test user
+    first_user = User.objects.first()
+    if first_user:
+        return first_user
+    
+    # Last resort: Create a test user
+    test_user, created = User.objects.get_or_create(
+        username='test_ai_user',
+        defaults={'email': 'test@ai.local', 'is_active': True}
+    )
+    return test_user
 
 
 def resolve_google_context(request, user_id=None):
@@ -1473,3 +1491,129 @@ def refresh_content_analysis(request):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+# ========================================
+# AI ASSISTANT ENDPOINTS
+# ========================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def ai_chat(request):
+    """
+    AI Assistant Chat endpoint
+    POST /api/ai/chat/
+    Request body: {
+        "message": "Quelle est la page avec le plus haut taux de rebond ?",
+        "user_id": null (optional),
+        "days": 30 (optional)
+    }
+    """
+    serializer = AIChatMessageSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Resolve user
+        user_id = serializer.validated_data.get('user_id')
+        user = resolve_google_user(request, user_id)
+        
+        message = serializer.validated_data.get('message')
+        days = serializer.validated_data.get('days', 30)
+        
+        # Use Ollama (local, gratuit, illimité, sans quota)
+        try:
+            service = OllamaService()
+            ai_response = service.analyze_seo_with_context(user, message, days)
+            context = service.get_dashboard_context(user, days)
+        except Exception as e:
+            print(f'[Ollama error] {e}')
+            raise RuntimeError(f'AI service error: {str(e)[:200]}')
+        
+        response_data = {
+            'response': ai_response,
+            'context_summary': {
+                'sessions': context['analytics']['total_sessions'],
+                'users': context['analytics']['total_users'],
+                'page_views': context['analytics']['total_page_views'],
+                'clicks': context['search_console']['total_clicks'],
+                'impressions': context['search_console']['total_impressions'],
+            },
+            'timestamp': timezone.now()
+        }
+        
+        response_serializer = AIChatResponseSerializer(data=response_data)
+        response_serializer.is_valid(raise_exception=True)
+        
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({
+            'error': 'AI Chat failed',
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ai_quick_analysis(request):
+    """
+    Get quick AI analysis of dashboard
+    GET /api/ai/quick-analysis/?user_id=1&days=30
+    """
+    try:
+        user_id = request.GET.get('user_id')
+        days = int(request.GET.get('days', 30))
+        
+        user = resolve_google_user(request, user_id)
+        
+        service = OllamaService()
+        analysis = service.get_quick_analysis(user)
+        context = service.get_dashboard_context(user, days)
+        
+        response_data = {
+            'analysis': analysis,
+            'dashboard_stats': {
+                'sessions': context['analytics']['total_sessions'],
+                'bounce_rate': context['analytics']['avg_bounce_rate'],
+                'top_pages': context['analytics']['top_pages'][:3],
+                'search_clicks': context['search_console']['total_clicks'],
+                'avg_position': context['search_console']['avg_position'],
+            }
+        }
+        
+        response_serializer = AIQuickAnalysisSerializer(data=response_data)
+        response_serializer.is_valid(raise_exception=True)
+        
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Quick analysis failed',
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ai_dashboard_context(request):
+    """
+    Get raw dashboard context for AI analysis
+    GET /api/ai/context/?user_id=1&days=30
+    """
+    try:
+        user_id = request.GET.get('user_id')
+        days = int(request.GET.get('days', 30))
+        
+        user = resolve_google_user(request, user_id)
+        
+        service = OllamaService()
+        context = service.get_dashboard_context(user, days)
+        
+        return Response(context, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Context retrieval failed',
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

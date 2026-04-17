@@ -154,9 +154,9 @@ class GoogleAnalyticsService:
         return results
 
     def save_analytics_data(self, user, days=1, mode="today"):
-        data = self.get_analytics_data(days=1, mode=mode)
-        target_date = self._get_date_range(1, mode)[0]
-        top_pages = self.get_top_pages(days=1, mode=mode)
+        data = self.get_analytics_data(days=days, mode=mode)
+        _, target_date = self._get_date_range(days, mode)
+        top_pages = self.get_top_pages(days=days, mode=mode)
 
         has_live_snapshot = any(
             [

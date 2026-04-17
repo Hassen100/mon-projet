@@ -13,3 +13,23 @@ class PageRecommendationRequestSerializer(serializers.Serializer):
 
 class PageRecommendationResponseSerializer(serializers.Serializer):
     recommendations = serializers.ListField(child=serializers.CharField())
+
+
+class AIChatMessageSerializer(serializers.Serializer):
+    """Serializer pour les messages du chat AI"""
+    message = serializers.CharField(required=True, max_length=2000)
+    user_id = serializers.IntegerField(required=False, allow_null=True)
+    days = serializers.IntegerField(required=False, default=30, min_value=1, max_value=365)
+
+
+class AIChatResponseSerializer(serializers.Serializer):
+    """Serializer pour les réponses du chat AI"""
+    response = serializers.CharField()
+    context_summary = serializers.DictField(required=False)
+    timestamp = serializers.DateTimeField(required=False)
+
+
+class AIQuickAnalysisSerializer(serializers.Serializer):
+    """Serializer pour l'analyse rapide"""
+    analysis = serializers.CharField()
+    dashboard_stats = serializers.DictField(required=False)
