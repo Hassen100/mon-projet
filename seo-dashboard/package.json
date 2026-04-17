@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:github": "ng build --configuration production --base-href /mon-projet/",
+    "build:github:hash": "ng build --configuration production --base-href /mon-projet/ --deploy-url /mon-projet/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

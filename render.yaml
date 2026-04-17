@@ -8,3 +8,9 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
+      - key: DJANGO_USE_DOTENV
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "127.0.0.1,localhost,.onrender.com"
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"

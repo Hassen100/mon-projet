@@ -9,7 +9,8 @@ try:
 except ImportError:
     load_dotenv = None
 
-if load_dotenv is not None and os.getenv('DJANGO_USE_DOTENV', 'true').strip().lower() == 'true':
+use_dotenv_default = 'false' if os.getenv('RENDER') else 'true'
+if load_dotenv is not None and os.getenv('DJANGO_USE_DOTENV', use_dotenv_default).strip().lower() == 'true':
     load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,7 +32,12 @@ def normalize_origin(value):
     return value
 
 
-allowed_hosts = parse_csv_env('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')
+default_allowed_hosts = '127.0.0.1,localhost,.onrender.com'
+render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if render_external_hostname:
+    default_allowed_hosts = f"{default_allowed_hosts},{render_external_hostname}"
+
+allowed_hosts = parse_csv_env('DJANGO_ALLOWED_HOSTS', default_allowed_hosts)
 
 ALLOWED_HOSTS = list(dict.fromkeys(allowed_hosts))
 

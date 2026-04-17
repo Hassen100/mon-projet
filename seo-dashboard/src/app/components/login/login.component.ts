@@ -163,7 +163,11 @@ export class LoginComponent {
     setTimeout(() => {
       localStorage.setItem('access_token', 'demo-token-' + Date.now());
       localStorage.setItem('username', this.username);
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/dashboard']).catch(() => {
+        this.errorMessage = 'Navigation error. Please try again.';
+      }).finally(() => {
+        this.isLoading = false;
+      });
     }, 1000);
   }
 }
