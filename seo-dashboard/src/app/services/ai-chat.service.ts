@@ -13,6 +13,13 @@ export interface ChatMessage {
 export interface AiResponse {
   response: string;
   context_summary?: any;
+
+  export interface AiServiceStatus {
+    ollama: { available: boolean; url: string; model: string };
+    gemini: { available: boolean; provider: string };
+    last_used: string;
+    recommended: string;
+  }
   timestamp?: string;
 }
 
@@ -44,6 +51,20 @@ export class AiChatService {
       data_type: dataType
     };
     return this.http.post<AiResponse>(url, payload);
+
+    sendMessageWithMode(
+      message: string,
+      aiMode: 'auto' | 'ollama' | 'gemini' = 'auto',
+      dataType: string = 'summary'
+    ): Observable<AiResponse> {
+      const url = this.apiConfig.getApiUrl('/api/ai/chat/');
+      const payload = {
+        message: message,
+        data_type: dataType,
+        ai_mode: aiMode
+      };
+      return this.http.post<AiResponse>(url, payload);
+    }
   }
 
   getQuickAnalysis(dataType: string, url?: string): Observable<QuickAnalysisResponse> {
@@ -61,6 +82,11 @@ export class AiChatService {
       data_type: dataType
     };
     return this.http.post<any>(url, payload);
+
+    getServicesStatus(): Observable<AiServiceStatus> {
+      const url = this.apiConfig.getApiUrl('/api/ai/services-status/');
+      return this.http.get<AiServiceStatus>(url);
+    }
   }
 }
 import { Injectable } from '@angular/core';

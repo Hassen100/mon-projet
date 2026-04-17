@@ -48,8 +48,42 @@ from .ai_recommendation_service import SEORecommendationService
 from .ollama_service import OllamaService
 from .content_analyzer import refresh_all_analyses
 from datetime import datetime, timedelta
+from .hybrid_ai_service import HybridAIService
 import os
 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ai_services_status(request):
+    """
+    Check status of AI services (Ollama, Gemini)
+    GET /api/ai/services-status/
+    
+    Returns:
+    {
+        "ollama": {"available": true, "url": "http://localhost:11434", "model": "orca-mini"},
+        "gemini": {"available": true, "provider": "Google Gemini"},
+        "last_used": "ollama",
+        "recommended": "ollama"  # which service to use
+    }
+    """
+    try:
+        hybrid_service = HybridAIService()
+        status_info = hybrid_service.get_status()
+        
+        # Recommandation: use Ollama if available, else Gemini
+        recommended = 'ollama' if status_info['ollama']['available'] else 'gemini'
+        
+        return Response({
+            **status_info,
+            'recommended': recommended
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Could not determine AI services status',
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 def resolve_google_user(request, user_id=None):
     if getattr(request, 'user', None) and request.user.is_authenticated:
@@ -1529,6 +1563,20 @@ def ai_chat(request):
         except Exception as e:
             print(f'[Ollama error] {e}')
             raise RuntimeError(f'AI service error: {str(e)[:200]}')
+                # Use Hybrid AI Service (Ollama -> Gemini fallback)
+                ai_mode = request.data.get('ai_mode', 'auto')  # 'auto', 'ollama', 'gemini'
+                try:
+                    hybrid_service = HybridAIService()
+                    result = hybrid_service.analyze_seo_with_context(
+                        user, message, days, ai_mode=ai_mode
+                    )
+                    ai_response = result['response']
+                    provider = result['provider']
+                    model = result['model']
+                    context = hybrid_service.get_dashboard_context(user, days)
+                except Exception as e:
+                    print(f'[AI error] {e}')
+                    raise RuntimeError(f'AI service error: {str(e)[:200]}')
         
         response_data = {
             'response': ai_response,
