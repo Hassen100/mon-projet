@@ -11,16 +11,37 @@ export class ApiConfigService {
   }
 
   private setApiBaseUrl(): void {
-    const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    const port = window.location.port;
+    const override = (window as any).__API_BASE_URL__ as string | undefined;
 
-    // Development: use localhost:8000
+    if (override && override.trim()) {
+      this.apiBaseUrl = override.trim().replace(/\/$/, '');
+      return;
+    }
+
+    // Development: local Django API
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       this.apiBaseUrl = `http://localhost:8000`;
+      return;
+    }
+
+    // GitHub Pages/static hosting: point to deployed backend API
+    if (hostname.includes('github.io')) {
+      this.apiBaseUrl = 'https://mon-projet-backend.onrender.com';
+      return;
+    }
+
+    // TryCloudflare frontend deployments should use same tunnel host.
+    if (hostname.includes('trycloudflare.com')) {
+      this.apiBaseUrl = `${window.location.protocol}//${hostname}`;
+      return;
+    }
+
+    // Default production fallback
+    if (hostname.endsWith('onrender.com')) {
+      this.apiBaseUrl = `${window.location.protocol}//${hostname}`;
     } else {
-      // Production: use same origin
-      this.apiBaseUrl = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+      this.apiBaseUrl = 'https://mon-projet-backend.onrender.com';
     }
 
     console.log('API Base URL:', this.apiBaseUrl);

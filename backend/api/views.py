@@ -1548,46 +1548,28 @@ def ai_chat(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        # Resolve user
         user_id = serializer.validated_data.get('user_id')
         user = resolve_google_user(request, user_id)
-        
+
         message = serializer.validated_data.get('message')
         days = serializer.validated_data.get('days', 30)
-        
-        # Use Ollama (local, gratuit, illimité, sans quota)
-        try:
-            service = OllamaService()
-            ai_response = service.analyze_seo_with_context(user, message, days)
-            context = service.get_dashboard_context(user, days)
-        except Exception as e:
-            print(f'[Ollama error] {e}')
-            raise RuntimeError(f'AI service error: {str(e)[:200]}')
-                # Use Hybrid AI Service (Ollama -> Gemini fallback)
-                ai_mode = request.data.get('ai_mode', 'auto')  # 'auto', 'ollama', 'gemini'
-                try:
-                    hybrid_service = HybridAIService()
-                    result = hybrid_service.analyze_seo_with_context(
-                        user, message, days, ai_mode=ai_mode
-                    )
-                    ai_response = result['response']
-                    provider = result['provider']
-                    model = result['model']
-                    context = hybrid_service.get_dashboard_context(user, days)
-                except Exception as e:
-                    print(f'[AI error] {e}')
-                    raise RuntimeError(f'AI service error: {str(e)[:200]}')
-        
+        ai_mode = request.data.get('ai_mode', 'auto')
+
+        hybrid_service = HybridAIService()
+        result = hybrid_service.analyze_seo_with_context(user, message, days, ai_mode=ai_mode)
+        ai_response = result['response']
+        context = hybrid_service.get_dashboard_context(user, days)
+
         response_data = {
             'response': ai_response,
             'context_summary': {
-                'sessions': context['analytics']['total_sessions'],
-                'users': context['analytics']['total_users'],
-                'page_views': context['analytics']['total_page_views'],
-                'clicks': context['search_console']['total_clicks'],
-                'impressions': context['search_console']['total_impressions'],
+                'sessions': context.get('analytics', {}).get('total_sessions', 0),
+                'users': context.get('analytics', {}).get('total_users', 0),
+                'page_views': context.get('analytics', {}).get('total_page_views', 0),
+                'clicks': context.get('search_console', {}).get('total_clicks', 0),
+                'impressions': context.get('search_console', {}).get('total_impressions', 0),
             },
-            'timestamp': timezone.now()
+            'timestamp': timezone.now(),
         }
         
         response_serializer = AIChatResponseSerializer(data=response_data)

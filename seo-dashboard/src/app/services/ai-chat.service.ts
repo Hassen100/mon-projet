@@ -1,38 +1,53 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, timeout } from 'rxjs';
 import { ApiConfigService } from './api-config.service';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AiResponse {
   response: string;
-  context_summary?: any;
-
-  export interface AiServiceStatus {
-    ollama: { available: boolean; url: string; model: string };
-    gemini: { available: boolean; provider: string };
-    last_used: string;
-    recommended: string;
-  }
+  context_summary?: {
+    sessions?: number;
+    users?: number;
+    page_views?: number;
+    clicks?: number;
+    impressions?: number;
+  };
   timestamp?: string;
+  provider?: 'ollama' | 'gemini' | 'auto';
+  model?: string;
 }
 
-export interface QuickAnalysisRequest {
-  data_type: string;
-  url?: string;
+export interface AiServiceStatus {
+  ollama: { available: boolean; url: string; model: string };
+  gemini: { available: boolean; provider: string };
+  last_used: string | null;
+  recommended: 'ollama' | 'gemini';
 }
 
 export interface QuickAnalysisResponse {
   analysis: string;
-  priority: string;
-  recommendations: string[];
-  metrics?: any;
+  dashboard_stats?: {
+    sessions?: number;
+    bounce_rate?: number;
+    top_pages?: Array<Record<string, unknown>>;
+    search_clicks?: number;
+    avg_position?: number;
+  };
+}
+
+export interface DashboardContext {
+  period_days?: number;
+  analytics?: Record<string, unknown>;
+  search_console?: Record<string, unknown>;
+  top_pages?: Array<Record<string, unknown>>;
+  top_queries?: Array<Record<string, unknown>> | Record<string, unknown>;
 }
 
 @Injectable({
@@ -42,190 +57,61 @@ export class AiChatService {
   constructor(
     private http: HttpClient,
     private apiConfig: ApiConfigService
-  ) { }
+  ) {}
 
   sendMessage(message: string, dataType: string = 'summary'): Observable<AiResponse> {
+    return this.sendMessageWithMode(message, 'auto', dataType);
+  }
+
+  sendMessageWithMode(
+    message: string,
+    aiMode: 'auto' | 'ollama' | 'gemini' = 'auto',
+    dataType: string = 'summary',
+    days: number = 30,
+    userId?: number
+  ): Observable<AiResponse> {
     const url = this.apiConfig.getApiUrl('/api/ai/chat/');
-    const payload = {
-      message: message,
-      data_type: dataType
-    };
-    return this.http.post<AiResponse>(url, payload);
-
-    sendMessageWithMode(
-      message: string,
-      aiMode: 'auto' | 'ollama' | 'gemini' = 'auto',
-      dataType: string = 'summary'
-    ): Observable<AiResponse> {
-      const url = this.apiConfig.getApiUrl('/api/ai/chat/');
-      const payload = {
-        message: message,
-        data_type: dataType,
-        ai_mode: aiMode
-      };
-      return this.http.post<AiResponse>(url, payload);
-    }
-  }
-
-  getQuickAnalysis(dataType: string, url?: string): Observable<QuickAnalysisResponse> {
-    const apiUrl = this.apiConfig.getApiUrl('/api/ai/quick-analysis/');
-    const payload: QuickAnalysisRequest = {
-      data_type: dataType,
-      url: url
-    };
-    return this.http.post<QuickAnalysisResponse>(apiUrl, payload);
-  }
-
-  getDashboardContext(dataType: string): Observable<any> {
-    const url = this.apiConfig.getApiUrl('/api/ai/context/');
-    const payload = {
-      data_type: dataType
-    };
-    return this.http.post<any>(url, payload);
-
-    getServicesStatus(): Observable<AiServiceStatus> {
-      const url = this.apiConfig.getApiUrl('/api/ai/services-status/');
-      return this.http.get<AiServiceStatus>(url);
-    }
-  }
-}
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, timeout } from 'rxjs';
-import { getApiBaseUrl } from '../api-base';
-
-export interface AIChatMessage {
-  message: string;
-  user_id?: number;
-  days?: number;
-}
-
-export interface AIChatResponse {
-  response: string;
-  context_summary?: {
-    sessions: number;
-    users: number;
-    page_views: number;
-    clicks: number;
-    impressions: number;
-  };
-  timestamp?: string;
-}
-
-export interface AIQuickAnalysis {
-  analysis: string;
-  dashboard_stats?: {
-    sessions: number;
-    bounce_rate: number;
-    top_pages: Array<any>;
-    search_clicks: number;
-    avg_position: number;
-  };
-}
-
-export interface DashboardContext {
-  period_days: number;
-  analytics: {
-    total_sessions: number;
-    total_users: number;
-    total_page_views: number;
-    avg_bounce_rate: number;
-    top_pages: Array<{
-      page: string;
-      views: number;
-      sessions: number;
-    }>;
-  };
-  search_console: {
-    total_clicks: number;
-    total_impressions: number;
-    avg_ctr: number;
-    avg_position: number;
-    top_queries: Array<{
-      query: string;
-      clicks: number;
-      impressions: number;
-      ctr: number;
-      position: number;
-    }> | string;
-  };
-  anomalies: Array<any>;
-  url_issues: Array<any>;
-}
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AIChatService {
-  private baseUrl = getApiBaseUrl();
-
-  constructor(private http: HttpClient) { }
-
-  private getAuthOptions(params?: HttpParams) {
-    let headers = new HttpHeaders();
-    const authData = localStorage.getItem('auth_token');
-
-    if (authData) {
-      try {
-        const parsed = JSON.parse(authData);
-        if (parsed?.token) {
-          headers = headers.set('Authorization', `Token ${parsed.token}`);
-        }
-      } catch {
-        // Ignore malformed auth data in local storage.
-      }
-    }
-
-    return { headers, params };
-  }
-
-  /**
-   * Send a message to the AI assistant and get expert SEO analysis
-   */
-  sendMessage(message: string, userId?: number, days: number = 30): Observable<AIChatResponse> {
-    const payload: AIChatMessage = {
+    const payload: Record<string, unknown> = {
       message,
+      data_type: dataType,
+      ai_mode: aiMode,
       days
     };
 
-    if (userId) {
-      payload.user_id = userId;
+    if (typeof userId === 'number') {
+      payload['user_id'] = userId;
     }
 
-    return this.http
-      .post<AIChatResponse>(`${this.baseUrl}/ai/chat/`, payload, this.getAuthOptions())
-      .pipe(timeout(210000));
+    return this.http.post<AiResponse>(url, payload).pipe(timeout(210000));
   }
 
-  /**
-   * Get a quick analysis of the current dashboard
-   */
-  getQuickAnalysis(userId?: number, days: number = 30): Observable<AIQuickAnalysis> {
-    let params = new HttpParams()
-      .set('days', days.toString());
-
-    if (userId) {
-      params = params.set('user_id', userId.toString());
+  getQuickAnalysis(userId?: number, days: number = 30): Observable<QuickAnalysisResponse> {
+    const url = this.apiConfig.getApiUrl('/api/ai/quick-analysis/');
+    let params = new HttpParams().set('days', String(days));
+    if (typeof userId === 'number') {
+      params = params.set('user_id', String(userId));
     }
-
-    return this.http
-      .get<AIQuickAnalysis>(`${this.baseUrl}/ai/quick-analysis/`, this.getAuthOptions(params))
-      .pipe(timeout(180000));
+    return this.http.get<QuickAnalysisResponse>(url, { params }).pipe(timeout(180000));
   }
 
-  /**
-   * Get dashboard context data for AI
-   */
-  getDashboardContext(userId?: number, days: number = 30): Observable<DashboardContext> {
-    let params = new HttpParams()
-      .set('days', days.toString());
+  getDashboardContext(dataTypeOrUserId?: string | number, days: number = 30): Observable<DashboardContext> {
+    const url = this.apiConfig.getApiUrl('/api/ai/context/');
 
-    if (userId) {
-      params = params.set('user_id', userId.toString());
+    let userId: number | undefined;
+    if (typeof dataTypeOrUserId === 'number') {
+      userId = dataTypeOrUserId;
     }
 
-    return this.http
-      .get<DashboardContext>(`${this.baseUrl}/ai/context/`, this.getAuthOptions(params))
-      .pipe(timeout(180000));
+    let params = new HttpParams().set('days', String(days));
+    if (typeof userId === 'number') {
+      params = params.set('user_id', String(userId));
+    }
+
+    return this.http.get<DashboardContext>(url, { params }).pipe(timeout(180000));
+  }
+
+  getServicesStatus(): Observable<AiServiceStatus> {
+    const url = this.apiConfig.getApiUrl('/api/ai/services-status/');
+    return this.http.get<AiServiceStatus>(url);
   }
 }
