@@ -1,4 +1,4 @@
-"""Service pour intégration Ollama - Modèles gratuits locaux, avec fallback stub"""
+"""Service pour intégration Ollama - Modèles gratuits locaux"""
 import os
 import re
 import requests
@@ -114,18 +114,10 @@ class OllamaService:
 
     def _generate_general_chat(self, question: str) -> str:
         if self._is_greeting(question):
-            if not self._is_available():
-                return self._fallback_stub_response('greeting')
             return self._greeting_response()
 
         if self._is_technical_query(question):
-            if not self._is_available():
-                return self._fallback_stub_response('technical')
             return self._fallback_technical_answer(question)
-
-        # Ollama general chat attempt
-        if not self._is_available():
-            return self._fallback_stub_response('general')
 
         prompt = f"""Tu es un assistant conversationnel utile, naturel et chaleureux.
 
@@ -185,85 +177,44 @@ Reponse:"""
             resp = requests.get(f'{self.base_url}/api/tags', timeout=2)
             return resp.status_code == 200
         except Exception as e:
-            print(f'[OllamaService] Ollama availability check failed: {e}')
+            print(f'[OllamaService] Availability check failed: {e}')
             return False
     
-    def _fallback_stub_response(self, prompt_type: str = 'general') -> str:
-        """Fallback stub response when Ollama is unavailable (production mode)"""
-        stubs = {
-            'greeting': (
-                "Bonjour! Je suis l'assistant SEO du dashboard.\n\n"
-                "**Note**: En ce moment, je fonctionnne en mode local (Ollama).\n"
-                "Les réponses détaillées seront disponibles quand Ollama sera activé localement.\n\n"
-                "Je peux vous aider sur:\n"
-                "- Mode libre: Questions générales/techniques\n"
-                "- Mode SEO: Analyse de vos données (sessions, trafic, mots-clés)"
-            ),
-            'general': (
-                "Merci pour votre question!\n\n"
-                "**Mode maintenance**: L'assistant fonctionne actuellement en mode local.\n"
-                "Pour une réponse complète, assurez-vous que Ollama est en cours d'exécution:\n\n"
-                "```bash\nollama serve\n```\n\n"
-                "En attendant, vous pouvez consulter le dashboard pour voir vos métriques SEO."
-            ),
-            'seo': (
-                "Analyse SEO en attente.\n\n"
-                "Pour obtenir une analyse détaillée de vos données SEO, "
-                "assurez-vous que Ollama est actif localement.\n\n"
-                "**Démarrage rapide**:\n"
-                "1. Ouvrez un terminal\n"
-                "2. Exécutez: `ollama serve`\n"
-                "3. Attendez que le modèle se charge\n"
-                "4. Réessayez votre requête"
-            ),
-            'technical': (
-                "Réponse technique (mode maintenan).\n\n"
-                "**Statut**: Ollama n'est pas accessible.\n\n"
-                "**Solution rapide**:\n"
-                "- **Localement**: Lancez `ollama serve` dans un terminal\n"
-                "- **En production**: Configurez OLLAMA_HOST avec une URL distante ou utilisez une API cloud\n\n"
-                "**Vérification**:\n"
-                "curl http://localhost:11434/api/tags"
-            ),
-        }
-        return stubs.get(prompt_type, stubs['general'])
-    
     def _generate(self, prompt: str) -> str:
-        """Générer une réponse avec Ollama, fallback stub si unavailable"""
-        if self._is_available():
-            try:
-                payload = {
-                    'model': self.model,
-                    'prompt': prompt,
-                    'stream': False,
-                    'options': {
-                        'temperature': 0.2,
-                        'top_p': 0.9,
-                        'repeat_penalty': 1.1,
-                    },
-                }
-                
-                resp = requests.post(
-                    f'{self.base_url}/api/generate',
-                    json=payload,
-                    timeout=self.timeout
-                )
-                
-                if resp.status_code == 200:
-                    data = resp.json()
-                    result = data.get('response', '').strip()
-                    if result:
-                        return result
-                        
-            except requests.Timeout:
-                print(f'[OllamaService] Ollama timeout (>{self.timeout}s), using stub')
-            except Exception as e:
-                print(f'[OllamaService] Ollama error: {str(e)[:100]}, using stub')
-        else:
-            print('[OllamaService] Ollama not available, using stub response')
+        """Générer une réponse avec Ollama"""
+        if not self._is_available():
+            raise RuntimeError(
+                'Ollama not running. Start with: ollama serve'
+            )
         
-        # Fallback to stub (maintenance mode)
-        return self._fallback_stub_response('general')
+        try:
+            payload = {
+                'model': self.model,
+                'prompt': prompt,
+                'stream': False,
+                'options': {
+                    'temperature': 0.2,
+                    'top_p': 0.9,
+                    'repeat_penalty': 1.1,
+                },
+            }
+            
+            resp = requests.post(
+                f'{self.base_url}/api/generate',
+                json=payload,
+                timeout=self.timeout
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get('response', '').strip()
+            else:
+                raise RuntimeError(f'Ollama HTTP {resp.status_code}')
+                
+        except requests.Timeout:
+            raise RuntimeError(f'Ollama timeout (>{self.timeout}s)')
+        except Exception as e:
+            raise RuntimeError(f'Ollama error: {str(e)[:100]}')
 
     def _resolve_data_user(self, user: User) -> User:
         # Keep assistant behavior aligned with dashboard fallback logic.
@@ -446,10 +397,6 @@ Reponse:"""
 
         if self._is_greeting(question) or not self._is_seo_query(question):
             return self._generate_general_chat(question)
-        
-        # Check if Ollama is available for SEO analysis
-        if not self._is_available():
-            return self._fallback_stub_response('seo')
         
         context = self.get_dashboard_context(user, days)
         ga = context['analytics']
