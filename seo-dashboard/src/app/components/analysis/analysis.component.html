@@ -1,0 +1,47 @@
+<div class="analysis-shell">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="grid-overlay"></div>
+
+  <section class="analysis-card">
+    <div class="analysis-main">
+      <div class="analysis-header">
+        <span class="eyebrow">Analyse d'accès</span>
+        <h1>Validez l'URL avant d'ouvrir le dashboard</h1>
+        <p>Saisissez l'URL demandée par votre encadrant, puis cliquez sur Analyser pour afficher le dashboard complet.</p>
+      </div>
+
+      <div class="analysis-form">
+        <label for="target-url">URL du site</label>
+        <input
+          id="target-url"
+          name="targetUrl"
+          type="url"
+          [(ngModel)]="url"
+          placeholder="https://seo-ia123.vercel.app/"
+          autocomplete="url"
+        />
+
+        <button type="button" (click)="analyzeUrl()" [disabled]="isLoading">
+          <span *ngIf="!isLoading">Analyser</span>
+          <span *ngIf="isLoading">Analyse en cours...</span>
+        </button>
+
+        <p class="form-note">URL attendue: <strong>https://seo-ia123.vercel.app/</strong></p>
+      </div>
+
+      <div class="feedback error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <div class="feedback success" *ngIf="successMessage">{{ successMessage }}</div>
+    </div>
+
+    <aside class="analysis-side">
+      <h2>Processus</h2>
+      <ol>
+        <li>Connexion validée</li>
+        <li>URL saisie et vérifiée</li>
+        <li>Ouverture du dashboard</li>
+      </ol>
+      <div class="security-chip">Accès contrôlé par URL</div>
+    </aside>
+  </section>
+</div>
