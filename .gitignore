@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.sqlite3
+.DS_Store
+
+backend/db.sqlite3
+backend/**/__pycache__/
+
+seo-dashboard/node_modules/
+seo-dashboard/.angular/
+seo-dashboard/dist/
