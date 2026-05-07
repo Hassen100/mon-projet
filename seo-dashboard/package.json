@@ -20,6 +20,8 @@
     "@angular/platform-browser": "^18.0.0",
     "@angular/platform-browser-dynamic": "^18.0.0",
     "@angular/router": "^18.0.0",
+    "chart.js": "^4.5.1",
+    "ng-bootstrap": "^1.6.3",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.5"
@@ -29,6 +31,7 @@
     "@angular/cli": "^18.0.0",
     "@angular/compiler-cli": "^18.0.0",
     "@types/node": "^20.0.0",
+    "kill-port": "^2.0.1",
     "typescript": "~5.5.0"
   }
 }
