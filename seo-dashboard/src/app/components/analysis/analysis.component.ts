@@ -33,7 +33,7 @@ export class AnalysisComponent {
     }
 
     if (normalizedUrl !== allowedDashboardUrl) {
-      this.errorMessage = 'Veuillez saisir exactement https://seo-ia123.vercel.app/ pour accéder au dashboard.';
+      this.errorMessage = 'Veuillez saisir exactement https://seo-ia123.vercel.app/ pour acceder au dashboard.';
       return;
     }
 
@@ -43,7 +43,7 @@ export class AnalysisComponent {
       sessionStorage.setItem(analysisGateKey, normalizedUrl);
     }
 
-    this.successMessage = 'URL validée. Ouverture du dashboard...';
+    this.successMessage = 'URL validee. Ouverture du dashboard...';
     void this.router.navigateByUrl('/dashboard').finally(() => {
       this.isLoading = false;
     });
