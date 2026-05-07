@@ -35,7 +35,12 @@ jobs:
 
       - name: Build Angular app
         working-directory: seo-dashboard
-        run: npm run build
+        run: npm run build:github
+
+      - name: Add SPA fallback files
+        run: |
+          cp seo-dashboard/dist/seo-dashboard/index.html seo-dashboard/dist/seo-dashboard/404.html
+          touch seo-dashboard/dist/seo-dashboard/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
