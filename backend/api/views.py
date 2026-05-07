@@ -113,6 +113,24 @@ def resolve_google_user(request, user_id=None):
     return test_user
 
 
+def resolve_content_user(request, user_id=None):
+    if getattr(request, 'user', None) and request.user.is_authenticated:
+        return request.user
+
+    resolved_user_id = user_id or request.GET.get('user_id') or request.data.get('user_id')
+    if resolved_user_id:
+        try:
+            return User.objects.get(id=resolved_user_id)
+        except User.DoesNotExist:
+            pass
+
+    latest_analysis = ContentAnalysis.objects.select_related('user').order_by('-last_updated').first()
+    if latest_analysis and latest_analysis.user:
+        return latest_analysis.user
+
+    return resolve_google_user(request, user_id)
+
+
 def resolve_google_context(request, user_id=None):
     requested_user = resolve_google_user(request, user_id)
 
@@ -1469,10 +1487,10 @@ def recommend_page(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def content_analysis_list(request):
     """List content analyses for current user."""
-    user = request.user
+    user = resolve_content_user(request)
     queryset = ContentAnalysis.objects.filter(user=user).order_by('-last_updated')
 
     serializer = ContentAnalysisListSerializer(queryset, many=True)
@@ -1491,11 +1509,11 @@ def content_analysis_list(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def content_analysis_detail(request, analysis_id):
     """Return one content analysis detail."""
     try:
-        analysis = ContentAnalysis.objects.get(id=analysis_id, user=request.user)
+        analysis = ContentAnalysis.objects.get(id=analysis_id, user=resolve_content_user(request))
     except ContentAnalysis.DoesNotExist:
         return Response({'error': 'Content analysis not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1504,7 +1522,7 @@ def content_analysis_detail(request, analysis_id):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def refresh_content_analysis(request):
     """Trigger content analyses refresh in background."""
     max_urls = request.data.get('urls', request.data.get('max_urls', 50))
@@ -1516,7 +1534,8 @@ def refresh_content_analysis(request):
     max_urls = max(1, min(max_urls, 200))
 
     try:
-        user_id = request.user.id
+        content_user = resolve_content_user(request)
+        user_id = content_user.id
 
         def _background_refresh():
             try:

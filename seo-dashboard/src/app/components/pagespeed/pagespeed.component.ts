@@ -1,5 +1,5 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, HostBinding, Input, OnChanges, OnInit, PLATFORM_ID, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { getApiBaseUrl } from '../../api-base';
@@ -37,11 +37,11 @@ type LocalPageSpeedResponse = PageSpeedResponse & { localCached?: boolean };
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="ps-page">
+    <div class="ps-page" [class.embedded-mode]="embedded">
       <header class="ps-header">
         <span class="ps-kicker">SEO Dashboard</span>
         <h1>PageSpeed Insights</h1>
-        <p>Analyse complete d'une URL avec un rendu clair, visuel et actionnable.</p>
+        <p>Analyse complète d'une URL avec un rendu clair, visuel et actionnable.</p>
       </header>
 
       <section class="ps-search">
@@ -53,189 +53,232 @@ type LocalPageSpeedResponse = PageSpeedResponse & { localCached?: boolean };
           required
         />
         <select [(ngModel)]="strategy" name="strategy">
-          <option value="mobile">mobile</option>
-          <option value="desktop">desktop</option>
+          <option value="mobile">📱 Mobile</option>
+          <option value="desktop">🖥️ Desktop</option>
         </select>
-        <button type="button" (click)="analyze()" [disabled]="loading">{{ loading ? 'Analyse...' : 'Analyser' }}</button>
+        <button type="button" (click)="analyze()" [disabled]="loading">{{ loading ? '⏳ Analyse...' : '🔍 Analyser' }}</button>
       </section>
 
-      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <p class="error" *ngIf="errorMessage">⚠️ {{ errorMessage }}</p>
 
       <section class="loading-state" *ngIf="loading && !result">
         <div class="pulse-bar"></div>
-        <p>Analyse en cours. Recuperation des donnees Google PageSpeed...</p>
+        <p>⏳ Analyse en cours. Récupération des données Google PageSpeed...</p>
       </section>
 
       <section class="ps-results" *ngIf="result">
-        <div class="panel summary-panel">
+        <!-- Summary Score Section -->
+        <div class="summary-section">
           <div class="summary-score" [class.good]="scoreBand(overallScore()) === 'good'" [class.warn]="scoreBand(overallScore()) === 'warn'" [class.bad]="scoreBand(overallScore()) === 'bad'">
             <div class="summary-ring">
               <strong>{{ overallScore() }}</strong>
-              <span>Score global</span>
+              <span>Score Global</span>
             </div>
-            <p>{{ visualMessage(overallScore()) }}</p>
+            <p class="summary-message">{{ visualMessage(overallScore()) }}</p>
           </div>
 
           <div class="summary-preview" *ngIf="screenshotDataUrl() as shot">
-            <img [src]="shot" alt="Capture de la page analysee" />
+            <img [src]="shot" alt="Capture de la page analysée" />
           </div>
         </div>
 
-        <div class="score-row">
-          <article class="score-chip" [class.good]="scoreBand(result.categories.performance) === 'good'" [class.warn]="scoreBand(result.categories.performance) === 'warn'" [class.bad]="scoreBand(result.categories.performance) === 'bad'">
-            <div class="score-circle">{{ result.categories.performance }}</div>
-            <span>Performances</span>
-            <small>{{ scoreLabel(result.categories.performance) }}</small>
+        <!-- Category Scores -->
+        <div class="category-scores">
+          <article class="category-card" [class.good]="scoreBand(result.categories.performance) === 'good'" [class.warn]="scoreBand(result.categories.performance) === 'warn'" [class.bad]="scoreBand(result.categories.performance) === 'bad'">
+            <div class="score-badge">{{ result.categories.performance }}</div>
+            <div class="card-content">
+              <h3>⚡ Performances</h3>
+              <p>{{ scoreLabel(result.categories.performance) }}</p>
+            </div>
           </article>
-          <article class="score-chip" [class.good]="scoreBand(result.categories.accessibility) === 'good'" [class.warn]="scoreBand(result.categories.accessibility) === 'warn'" [class.bad]="scoreBand(result.categories.accessibility) === 'bad'">
-            <div class="score-circle">{{ result.categories.accessibility }}</div>
-            <span>Accessibilité</span>
-            <small>{{ scoreLabel(result.categories.accessibility) }}</small>
+
+          <article class="category-card" [class.good]="scoreBand(result.categories.accessibility) === 'good'" [class.warn]="scoreBand(result.categories.accessibility) === 'warn'" [class.bad]="scoreBand(result.categories.accessibility) === 'bad'">
+            <div class="score-badge">{{ result.categories.accessibility }}</div>
+            <div class="card-content">
+              <h3>♿ Accessibilité</h3>
+              <p>{{ scoreLabel(result.categories.accessibility) }}</p>
+            </div>
           </article>
-          <article class="score-chip" [class.good]="scoreBand(result.categories.bestPractices) === 'good'" [class.warn]="scoreBand(result.categories.bestPractices) === 'warn'" [class.bad]="scoreBand(result.categories.bestPractices) === 'bad'">
-            <div class="score-circle">{{ result.categories.bestPractices }}</div>
-            <span>Bonnes pratiques</span>
-            <small>{{ scoreLabel(result.categories.bestPractices) }}</small>
+
+          <article class="category-card" [class.good]="scoreBand(result.categories.bestPractices) === 'good'" [class.warn]="scoreBand(result.categories.bestPractices) === 'warn'" [class.bad]="scoreBand(result.categories.bestPractices) === 'bad'">
+            <div class="score-badge">{{ result.categories.bestPractices }}</div>
+            <div class="card-content">
+              <h3>✅ Bonnes Pratiques</h3>
+              <p>{{ scoreLabel(result.categories.bestPractices) }}</p>
+            </div>
           </article>
-          <article class="score-chip" [class.good]="scoreBand(result.categories.seo) === 'good'" [class.warn]="scoreBand(result.categories.seo) === 'warn'" [class.bad]="scoreBand(result.categories.seo) === 'bad'">
-            <div class="score-circle">{{ result.categories.seo }}</div>
-            <span>SEO</span>
-            <small>{{ scoreLabel(result.categories.seo) }}</small>
+
+          <article class="category-card" [class.good]="scoreBand(result.categories.seo) === 'good'" [class.warn]="scoreBand(result.categories.seo) === 'warn'" [class.bad]="scoreBand(result.categories.seo) === 'bad'">
+            <div class="score-badge">{{ result.categories.seo }}</div>
+            <div class="card-content">
+              <h3>🔍 SEO</h3>
+              <p>{{ scoreLabel(result.categories.seo) }}</p>
+            </div>
           </article>
         </div>
 
-        <div class="meta">
-          <span>URL: {{ result.url }}</span>
-          <span>Mode: {{ result.strategy }}</span>
-          <span>Cached: {{ result.cached ? 'oui' : 'non' }}</span>
-          <span *ngIf="result.localCached">Affichage instantane: cache local</span>
-          <span *ngIf="result.staleCache">Source: cache serveur (ancienne analyse)</span>
-          <span>Duree: {{ formatDuration(result.analysisDurationMs) }}</span>
-          <span *ngIf="result.analysisTimestamp">Analyse: {{ result.analysisTimestamp }}</span>
-        </div>
-
-        <div class="panel visual-panel">
-          <img [src]="visualForScore(result.categories.performance)" alt="Etat visuel de la performance" />
-          <div>
-            <h3>Resume visuel</h3>
-            <p>
-              {{ visualMessage(result.categories.performance) }}
-            </p>
+        <!-- Metadata -->
+        <div class="meta-info">
+          <div class="meta-item">
+            <span class="label">🌐 URL</span>
+            <span class="value">{{ result.url }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="label">📊 Mode</span>
+            <span class="value">{{ result.strategy === 'mobile' ? '📱 Mobile' : '🖥️ Desktop' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="label">💾 Cache</span>
+            <span class="value">{{ result.cached ? '✅ Oui' : '❌ Non' }}</span>
+          </div>
+          <div class="meta-item" *ngIf="result.localCached">
+            <span class="label">⚡ Local</span>
+            <span class="value">Affichage instantané</span>
+          </div>
+          <div class="meta-item" *ngIf="result.staleCache">
+            <span class="label">⏱️ Serveur</span>
+            <span class="value">Ancien cache</span>
+          </div>
+          <div class="meta-item">
+            <span class="label">⏱️ Durée</span>
+            <span class="value">{{ formatDuration(result.analysisDurationMs) }}</span>
+          </div>
+          <div class="meta-item" *ngIf="result.analysisTimestamp">
+            <span class="label">📅 Analyse</span>
+            <span class="value">{{ result.analysisTimestamp }}</span>
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Statistiques (Lighthouse)</h3>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span>First Contentful Paint</span>
-              <strong>{{ metricDisplay('first-contentful-paint') }}</strong>
-            </div>
-            <div class="stat-item">
-              <span>Largest Contentful Paint</span>
-              <strong>{{ metricDisplay('largest-contentful-paint') }}</strong>
-            </div>
-            <div class="stat-item">
-              <span>Total Blocking Time</span>
-              <strong>{{ metricDisplay('total-blocking-time') }}</strong>
-            </div>
-            <div class="stat-item">
-              <span>Cumulative Layout Shift</span>
-              <strong>{{ metricDisplay('cumulative-layout-shift') }}</strong>
-            </div>
-            <div class="stat-item">
-              <span>Speed Index</span>
-              <strong>{{ metricDisplay('speed-index') }}</strong>
-            </div>
+        <!-- Core Metrics -->
+        <div class="section-header">📈 Métriques de Performance</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">First Contentful Paint</span>
+            <strong class="metric-value">{{ metricDisplay('first-contentful-paint') }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Largest Contentful Paint</span>
+            <strong class="metric-value">{{ metricDisplay('largest-contentful-paint') }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Total Blocking Time</span>
+            <strong class="metric-value">{{ metricDisplay('total-blocking-time') }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Cumulative Layout Shift</span>
+            <strong class="metric-value">{{ metricDisplay('cumulative-layout-shift') }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Speed Index</span>
+            <strong class="metric-value">{{ metricDisplay('speed-index') }}</strong>
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Core Web Vitals (Field Data)</h3>
-          <div class="vitals-grid">
-            <div class="vitals-box">
-              <h4>Loading Experience</h4>
+        <!-- Core Web Vitals -->
+        <div class="section-header">📊 Core Web Vitals</div>
+        <div class="vitals-row">
+          <div class="vitals-box">
+            <h4>📍 Loading Experience</h4>
+            <div class="vital-items">
               <div class="vital-item" *ngFor="let item of fieldMetrics(result.coreWebVitals.loadingExperience.metrics)">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
+                <span class="vital-label">{{ item.label }}</span>
+                <strong class="vital-value">{{ item.value }}</strong>
               </div>
               <p class="empty-note" *ngIf="fieldMetrics(result.coreWebVitals.loadingExperience.metrics).length === 0">Aucune donnée terrain disponible.</p>
             </div>
-            <div class="vitals-box">
-              <h4>Origin Loading Experience</h4>
+          </div>
+          <div class="vitals-box">
+            <h4>🌍 Origin Loading Experience</h4>
+            <div class="vital-items">
               <div class="vital-item" *ngFor="let item of fieldMetrics(result.coreWebVitals.originLoadingExperience.metrics)">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
+                <span class="vital-label">{{ item.label }}</span>
+                <strong class="vital-value">{{ item.value }}</strong>
               </div>
               <p class="empty-note" *ngIf="fieldMetrics(result.coreWebVitals.originLoadingExperience.metrics).length === 0">Aucune donnée terrain disponible.</p>
             </div>
           </div>
         </div>
 
-        <div class="panel-grid">
-          <div class="panel">
-            <h3>Insights</h3>
-            <div class="audit-row" *ngFor="let audit of insightsAudits()">
-              <span class="audit-title">
-                {{ audit.title }}
-                <small *ngIf="audit.description">{{ audit.description }}</small>
-              </span>
-              <span class="audit-value" [class.ok]="audit.score === 1">{{ audit.displayValue || scoreText(audit.score) }}</span>
+        <!-- Audit Sections -->
+        <div class="audit-sections">
+          <div class="audit-section">
+            <h3 class="section-header">💡 Insights</h3>
+            <div class="audit-items">
+              <div class="audit-item" *ngFor="let audit of insightsAudits()" [class.ok]="audit.score === 1" [class.fail]="audit.score !== 1">
+                <div class="audit-header">
+                  <span class="audit-status" [class.ok]="audit.score === 1"></span>
+                  <span class="audit-title">{{ audit.title }}</span>
+                </div>
+                <small class="audit-desc" *ngIf="audit.description">{{ audit.description }}</small>
+                <span class="audit-value">{{ audit.displayValue || scoreText(audit.score) }}</span>
+              </div>
+              <p class="empty-note" *ngIf="insightsAudits().length === 0">✅ Aucun insight disponible.</p>
             </div>
-            <p class="empty-note" *ngIf="insightsAudits().length === 0">Aucun insight disponible.</p>
           </div>
 
-          <div class="panel">
-            <h3>Diagnostics</h3>
-            <div class="audit-row" *ngFor="let audit of diagnosticsAudits()">
-              <span class="audit-title">
-                {{ audit.title }}
-                <small *ngIf="audit.description">{{ audit.description }}</small>
-              </span>
-              <span class="audit-value" [class.ok]="audit.score === 1">{{ audit.displayValue || scoreText(audit.score) }}</span>
+          <div class="audit-section">
+            <h3 class="section-header">🔧 Diagnostics</h3>
+            <div class="audit-items">
+              <div class="audit-item" *ngFor="let audit of diagnosticsAudits()" [class.ok]="audit.score === 1" [class.fail]="audit.score !== 1">
+                <div class="audit-header">
+                  <span class="audit-status" [class.ok]="audit.score === 1"></span>
+                  <span class="audit-title">{{ audit.title }}</span>
+                </div>
+                <small class="audit-desc" *ngIf="audit.description">{{ audit.description }}</small>
+                <span class="audit-value">{{ audit.displayValue || scoreText(audit.score) }}</span>
+              </div>
+              <p class="empty-note" *ngIf="diagnosticsAudits().length === 0">✅ Aucun diagnostic problématique.</p>
             </div>
-            <p class="empty-note" *ngIf="diagnosticsAudits().length === 0">Aucun diagnostic disponible.</p>
           </div>
 
-          <div class="panel">
-            <h3>SEO</h3>
-            <div class="audit-row" *ngFor="let audit of categoryAudits('seo')">
-              <span class="audit-title">
-                {{ audit.title }}
-                <small *ngIf="audit.description">{{ audit.description }}</small>
-              </span>
-              <span class="audit-value" [class.ok]="audit.score === 1">{{ audit.displayValue || scoreText(audit.score) }}</span>
+          <div class="audit-section">
+            <h3 class="section-header">🔍 SEO</h3>
+            <div class="audit-items">
+              <div class="audit-item" *ngFor="let audit of categoryAudits('seo')" [class.ok]="audit.score === 1" [class.fail]="audit.score !== 1">
+                <div class="audit-header">
+                  <span class="audit-status" [class.ok]="audit.score === 1"></span>
+                  <span class="audit-title">{{ audit.title }}</span>
+                </div>
+                <small class="audit-desc" *ngIf="audit.description">{{ audit.description }}</small>
+                <span class="audit-value">{{ audit.displayValue || scoreText(audit.score) }}</span>
+              </div>
+              <p class="empty-note" *ngIf="categoryAudits('seo').length === 0">✅ Aucun problème SEO critique trouvé.</p>
             </div>
-            <p class="empty-note" *ngIf="categoryAudits('seo').length === 0">Aucun problème SEO critique trouvé.</p>
           </div>
 
-          <div class="panel">
-            <h3>Accessibilité</h3>
-            <div class="audit-row" *ngFor="let audit of categoryAudits('accessibility')">
-              <span class="audit-title">
-                {{ audit.title }}
-                <small *ngIf="audit.description">{{ audit.description }}</small>
-              </span>
-              <span class="audit-value" [class.ok]="audit.score === 1">{{ audit.displayValue || scoreText(audit.score) }}</span>
+          <div class="audit-section">
+            <h3 class="section-header">♿ Accessibilité</h3>
+            <div class="audit-items">
+              <div class="audit-item" *ngFor="let audit of categoryAudits('accessibility')" [class.ok]="audit.score === 1" [class.fail]="audit.score !== 1">
+                <div class="audit-header">
+                  <span class="audit-status" [class.ok]="audit.score === 1"></span>
+                  <span class="audit-title">{{ audit.title }}</span>
+                </div>
+                <small class="audit-desc" *ngIf="audit.description">{{ audit.description }}</small>
+                <span class="audit-value">{{ audit.displayValue || scoreText(audit.score) }}</span>
+              </div>
+              <p class="empty-note" *ngIf="categoryAudits('accessibility').length === 0">✅ Aucun problème d'accessibilité critique trouvé.</p>
             </div>
-            <p class="empty-note" *ngIf="categoryAudits('accessibility').length === 0">Aucun problème d'accessibilité critique trouvé.</p>
           </div>
 
-          <div class="panel">
-            <h3>Bonnes pratiques</h3>
-            <div class="audit-row" *ngFor="let audit of categoryAudits('best-practices')">
-              <span class="audit-title">
-                {{ audit.title }}
-                <small *ngIf="audit.description">{{ audit.description }}</small>
-              </span>
-              <span class="audit-value" [class.ok]="audit.score === 1">{{ audit.displayValue || scoreText(audit.score) }}</span>
+          <div class="audit-section">
+            <h3 class="section-header">✅ Bonnes Pratiques</h3>
+            <div class="audit-items">
+              <div class="audit-item" *ngFor="let audit of categoryAudits('best-practices')" [class.ok]="audit.score === 1" [class.fail]="audit.score !== 1">
+                <div class="audit-header">
+                  <span class="audit-status" [class.ok]="audit.score === 1"></span>
+                  <span class="audit-title">{{ audit.title }}</span>
+                </div>
+                <small class="audit-desc" *ngIf="audit.description">{{ audit.description }}</small>
+                <span class="audit-value">{{ audit.displayValue || scoreText(audit.score) }}</span>
+              </div>
+              <p class="empty-note" *ngIf="categoryAudits('best-practices').length === 0">✅ Aucun problème critique trouvé.</p>
             </div>
-            <p class="empty-note" *ngIf="categoryAudits('best-practices').length === 0">Aucun problème critique trouvé.</p>
           </div>
         </div>
       </section>
 
-      <button type="button" class="back" (click)="goDashboard()">Retour dashboard</button>
+      <button *ngIf="!embedded" type="button" class="back-btn" (click)="goDashboard()">← Retour Dashboard</button>
     </div>
   `,
   styles: [`
@@ -243,64 +286,81 @@ type LocalPageSpeedResponse = PageSpeedResponse & { localCached?: boolean };
       display: block;
       min-height: 100vh;
       background:
-        radial-gradient(circle at 10% 5%, rgba(59, 130, 246, 0.2), transparent 30%),
-        radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.18), transparent 28%),
+        radial-gradient(circle at 10% 5%, rgba(59, 130, 246, 0.15), transparent 40%),
+        radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.15), transparent 40%),
         linear-gradient(180deg, #0b1220 0%, #111a2f 50%, #0c1426 100%);
       color: #e2e8f0;
       font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
+    :host.embedded {
+      min-height: auto;
+      background: transparent;
+    }
+
     .ps-page {
-      padding: 1.2rem 1.1rem 1.8rem;
-      max-width: 1400px;
+      padding: 2rem 1.5rem 3rem;
+      max-width: 1600px;
       margin: 0 auto;
     }
 
+    .ps-page.embedded-mode {
+      max-width: none;
+      padding: 1rem;
+    }
+
+    /* Header */
     .ps-kicker {
       display: inline-flex;
-      margin-bottom: 0.65rem;
-      padding: 0.35rem 0.7rem;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      background: rgba(30, 41, 59, 0.7);
+      margin-bottom: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(30, 41, 59, 0.8);
       color: #bfdbfe;
-      font-size: 0.72rem;
+      font-size: 0.85rem;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
     }
 
     .ps-header h1 {
-      margin: 0 0 0.25rem;
-      font-size: 2rem;
-      color: #f8fafc;
+      margin: 0 0 0.5rem;
+      font-size: 2.8rem;
+      color: #f1f5f9;
+      font-weight: 800;
     }
 
     .ps-header p {
-      margin: 0 0 1rem;
-      color: #94a3b8;
+      margin: 0 0 1.5rem;
+      color: #cbd5e1;
+      font-size: 1.05rem;
+      max-width: 600px;
     }
 
+    /* Search Bar */
     .ps-search {
       display: grid;
-      grid-template-columns: 1fr 160px 150px;
-      gap: 0.75rem;
-      margin-bottom: 0.75rem;
+      grid-template-columns: 1fr 180px 160px;
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
 
-    input,
-    select,
-    button {
-      border-radius: 0.75rem;
-      border: 1px solid rgba(96, 165, 250, 0.75);
-      padding: 0.85rem 1rem;
+    input, select, button {
+      border-radius: 6px;
+      border: 1px solid rgba(96, 165, 250, 0.6);
+      padding: 1rem 1.2rem;
       font: inherit;
+      font-size: 1rem;
     }
 
-    input,
-    select {
-      background: rgba(15, 23, 42, 0.85);
-      color: #e2e8f0;
+    input, select {
+      background: rgba(15, 23, 42, 0.9);
+      color: #f1f5f9;
+    }
+
+    input::placeholder {
+      color: #64748b;
     }
 
     button {
@@ -308,40 +368,51 @@ type LocalPageSpeedResponse = PageSpeedResponse & { localCached?: boolean };
       color: #fff;
       cursor: pointer;
       font-weight: 700;
-      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(37, 99, 235, 0.4);
     }
 
     button:disabled {
-      opacity: 0.7;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
+    /* Error Message */
     .error {
-      margin: 0.35rem 0 0.8rem;
-      color: #fda4af;
+      margin: 1rem 0 1.5rem;
+      color: #fca5a5;
       font-weight: 600;
-      background: rgba(127, 29, 29, 0.4);
-      border: 1px solid rgba(248, 113, 113, 0.5);
-      border-radius: 0.7rem;
-      padding: 0.65rem 0.8rem;
+      font-size: 1rem;
+      background: rgba(159, 18, 57, 0.3);
+      border: 1px solid rgba(244, 114, 182, 0.5);
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
     }
 
+    /* Loading State */
     .loading-state {
-      margin-bottom: 0.75rem;
-      padding: 1rem;
-      border-radius: 0.85rem;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      background: rgba(15, 23, 42, 0.75);
+      margin-bottom: 2rem;
+      padding: 2rem;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(15, 23, 42, 0.8);
       color: #cbd5e1;
+      text-align: center;
+      font-size: 1.1rem;
     }
 
     .pulse-bar {
-      height: 6px;
+      height: 8px;
       border-radius: 999px;
-      background: linear-gradient(90deg, #1d4ed8 0%, #14b8a6 55%, #1d4ed8 100%);
+      background: linear-gradient(90deg, #1d4ed8 0%, #14b8a6 50%, #1d4ed8 100%);
       background-size: 200% 100%;
-      animation: pulseFlow 1.8s linear infinite;
-      margin-bottom: 0.55rem;
+      animation: pulseFlow 2s linear infinite;
+      margin-bottom: 1rem;
     }
 
     @keyframes pulseFlow {
@@ -349,323 +420,504 @@ type LocalPageSpeedResponse = PageSpeedResponse & { localCached?: boolean };
       to { background-position: 200% 0; }
     }
 
-    .summary-panel {
+    /* Results Section */
+    .ps-results {
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Summary Section */
+    .summary-section {
       display: grid;
-      grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
-      gap: 0.9rem;
+      grid-template-columns: 320px 1fr;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+      align-items: center;
+    }
+
+    .ps-page.embedded-mode .summary-section {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
     }
 
     .summary-score {
       display: grid;
       align-content: center;
       justify-items: center;
-      padding: 1rem;
-      border-radius: 0.9rem;
-      background: rgba(15, 23, 42, 0.72);
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 2.5rem 2rem;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.3);
       text-align: center;
+      box-shadow: 0 20px 50px rgba(2, 6, 23, 0.3);
     }
 
     .summary-ring {
-      width: 138px;
-      height: 138px;
+      width: 180px;
+      height: 180px;
       border-radius: 50%;
-      border: 8px solid currentColor;
+      border: 10px solid currentColor;
       display: grid;
       place-items: center;
-      margin-bottom: 0.6rem;
+      margin-bottom: 1.5rem;
     }
 
     .summary-ring strong {
-      font-size: 2rem;
+      font-size: 3rem;
       line-height: 1;
       color: currentColor;
     }
 
     .summary-ring span {
-      margin-top: 0.2rem;
-      font-size: 0.73rem;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: #cbd5e1;
     }
 
-    .summary-score p {
-      margin: 0;
+    .summary-message {
+      margin: 1rem 0 0;
       color: #cbd5e1;
-      max-width: 36ch;
-      line-height: 1.4;
+      max-width: 40ch;
+      line-height: 1.6;
+      font-size: 1.05rem;
     }
 
-    .summary-score.good { color: #22c55e; }
+    .summary-score.good { color: #10b981; }
     .summary-score.warn { color: #f59e0b; }
     .summary-score.bad { color: #ef4444; }
 
     .summary-preview img {
       width: 100%;
-      min-height: 220px;
-      max-height: 320px;
+      height: auto;
+      min-height: 280px;
+      max-height: 400px;
       object-fit: contain;
-      border-radius: 0.9rem;
+      border-radius: 6px;
       border: 1px solid rgba(148, 163, 184, 0.25);
-      background: #0f172a;
+      background: rgba(15, 23, 42, 0.8);
     }
 
-    .score-row {
+    /* Category Scores */
+    .category-scores {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.75rem;
-      margin-bottom: 0.75rem;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
     }
 
-    .score-chip {
-      background: rgba(15, 23, 42, 0.72);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: 0.75rem;
-      padding: 0.85rem 0.75rem;
-      display: grid;
-      justify-items: center;
-      gap: 0.5rem;
+    .ps-page.embedded-mode .category-scores {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+      margin-bottom: 1.5rem;
     }
 
-    .score-circle {
-      width: 56px;
-      height: 56px;
+    .category-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1.5px solid rgba(148, 163, 184, 0.3);
+      border-radius: 6px;
+      padding: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      transition: all 0.3s ease;
+      cursor: default;
+      box-shadow: 0 10px 30px rgba(2, 6, 23, 0.2);
+    }
+
+    .category-card:hover {
+      border-color: rgba(96, 165, 250, 0.5);
+      box-shadow: 0 15px 40px rgba(2, 6, 23, 0.4);
+    }
+
+    .score-badge {
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       display: grid;
       place-items: center;
-      font-size: 1.35rem;
+      font-size: 2.5rem;
+      font-weight: 800;
+      border: 5px solid currentColor;
+      flex-shrink: 0;
+      color: currentColor;
+    }
+
+    .card-content {
+      flex: 1;
+    }
+
+    .card-content h3 {
+      margin: 0 0 0.5rem;
+      color: #f1f5f9;
+      font-size: 1.2rem;
       font-weight: 700;
-      border: 4px solid currentColor;
     }
 
-    .score-chip span {
-      color: #e2e8f0;
-      font-size: 0.92rem;
-      font-weight: 600;
-    }
-
-    .score-chip small {
-      color: #94a3b8;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .score-chip.good { color: #22c55e; }
-    .score-chip.warn { color: #f59e0b; }
-    .score-chip.bad { color: #ef4444; }
-
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem 1rem;
-      margin-bottom: 0.75rem;
-      color: #cbd5e1;
-      font-size: 0.9rem;
-      background: rgba(15, 23, 42, 0.62);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 0.75rem;
-      padding: 0.65rem 0.8rem;
-    }
-
-    .panel {
-      background: rgba(15, 23, 42, 0.72);
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 0.75rem;
-      padding: 0.75rem;
-      margin-bottom: 0.75rem;
-      box-shadow: 0 14px 28px rgba(2, 6, 23, 0.28);
-    }
-
-    .visual-panel {
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      gap: 0.85rem;
-      align-items: center;
-    }
-
-    .visual-panel img {
-      width: 100%;
-      max-width: 220px;
-      border-radius: 0.7rem;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      background: #0f172a;
-    }
-
-    .visual-panel p {
+    .card-content p {
       margin: 0;
       color: #cbd5e1;
-    }
-
-    .preview-panel img {
-      width: 100%;
-      max-height: 380px;
-      object-fit: contain;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      background: #fff;
-    }
-
-    .panel h3 {
-      margin: 0 0 0.5rem;
-      color: #f8fafc;
-    }
-
-    .panel-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.75rem;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.6rem;
-    }
-
-    .stat-item {
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 0.6rem;
-      padding: 0.65rem;
-      background: rgba(30, 41, 59, 0.55);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .stat-item span {
-      color: #cbd5e1;
-      font-size: 0.9rem;
-    }
-
-    .stat-item strong {
-      color: #f8fafc;
       font-size: 1rem;
     }
 
-    .vitals-grid {
+    .category-card.good { color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+    .category-card.warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+    .category-card.bad { color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
+
+    /* Metadata */
+    .meta-info {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 6px;
+      padding: 1.5rem;
+    }
+
+    .meta-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .meta-item:last-child {
+      border-bottom: none;
+    }
+
+    .meta-item .label {
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .meta-item .value {
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      word-break: break-word;
+      text-align: right;
+    }
+
+    /* Section Headers */
+    .section-header {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin: 2rem 0 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 2px solid rgba(96, 165, 250, 0.3);
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .ps-page.embedded-mode .metrics-grid {
+      margin-bottom: 1.5rem;
+      gap: 0.9rem;
+    }
+
+    .metric-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 6px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      box-shadow: 0 10px 25px rgba(2, 6, 23, 0.2);
+    }
+
+    .metric-label {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .metric-value {
+      color: #38bdf8;
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    /* Vitals Section */
+    .vitals-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .ps-page.embedded-mode .vitals-row {
+      grid-template-columns: 1fr;
+      gap: 0.9rem;
+      margin-bottom: 1.5rem;
     }
 
     .vitals-box {
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 0.6rem;
-      padding: 0.65rem;
-      background: rgba(30, 41, 59, 0.55);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 6px;
+      padding: 1.8rem;
+      box-shadow: 0 10px 25px rgba(2, 6, 23, 0.2);
     }
 
     .vitals-box h4 {
-      margin: 0 0 0.45rem;
+      margin: 0 0 1.2rem;
+      color: #f1f5f9;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .vital-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
     }
 
     .vital-item {
       display: flex;
       justify-content: space-between;
-      padding: 0.35rem 0;
-      border-bottom: 1px dashed rgba(148, 163, 184, 0.4);
-      gap: 0.5rem;
-    }
-
-    .vital-item:last-child {
-      border-bottom: none;
-    }
-
-    .vital-item span {
-      color: #cbd5e1;
-    }
-
-    .vital-item strong {
-      color: #f8fafc;
-    }
-
-    .audit-row {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 0.8rem;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 4px;
+      border-left: 3px solid rgba(96, 165, 250, 0.4);
     }
 
-    .audit-row:last-child {
-      border-bottom: none;
+    .vital-label {
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .vital-value {
+      color: #38bdf8;
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    /* Audit Sections */
+    .audit-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .ps-page.embedded-mode .audit-sections {
+      grid-template-columns: 1fr;
+      gap: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .audit-section {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 6px;
+      padding: 2rem;
+      box-shadow: 0 15px 40px rgba(2, 6, 23, 0.3);
+    }
+
+    .audit-section .section-header {
+      margin: 0 0 1.5rem;
+      border-bottom-color: rgba(96, 165, 250, 0.4);
+    }
+
+    .audit-items {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .audit-item {
+      padding: 1.2rem;
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 4px;
+      border-left: 4px solid #ef4444;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      transition: all 0.2s ease;
+    }
+
+    .audit-item.ok {
+      border-left-color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .audit-item.fail {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .audit-header {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .audit-status {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ef4444;
+      flex-shrink: 0;
+    }
+
+    .audit-status.ok {
+      background: #10b981;
     }
 
     .audit-title {
-      color: #f8fafc;
-      font-size: 0.93rem;
-      display: grid;
-      gap: 0.2rem;
-      max-width: 75%;
+      color: #f1f5f9;
+      font-size: 1.05rem;
+      font-weight: 700;
+      flex: 1;
     }
 
-    .audit-title small {
-      color: #94a3b8;
-      font-size: 0.75rem;
-      line-height: 1.35;
+    .audit-desc {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-left: 1.5rem;
     }
 
     .audit-value {
-      color: #dc2626;
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-align: right;
-      max-width: 25%;
-      word-break: break-word;
+      color: #ef4444;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-align: left;
+      margin-left: 1.5rem;
     }
 
     .audit-value.ok {
-      color: #16a34a;
+      color: #10b981;
     }
 
     .empty-note {
-      margin: 0.5rem 0 0;
       color: #94a3b8;
-      font-size: 0.9rem;
+      font-size: 1rem;
+      text-align: center;
+      padding: 1.5rem;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 4px;
     }
 
-    .back {
+    /* Back Button */
+    .back-btn {
       width: 100%;
+      margin-top: 1.5rem;
       border-color: rgba(148, 163, 184, 0.5);
       background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+      font-size: 1rem;
+      padding: 1rem 1.5rem;
+      border-radius: 6px;
+      transition: all 0.3s ease;
     }
 
-    @media (max-width: 980px) {
+    .back-btn:hover {
+      background: linear-gradient(135deg, #475569 0%, #334155 100%);
+      transform: translateY(-2px);
+    }
+
+    /* Responsive */
+    @media (max-width: 1400px) {
+      .ps-search {
+        grid-template-columns: 1fr 160px 140px;
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .summary-section {
+        grid-template-columns: 1fr;
+      }
+
+      .category-scores {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .vitals-row {
+        grid-template-columns: 1fr;
+      }
+
+      .audit-sections {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .ps-page {
+        padding: 1.2rem 1rem 2rem;
+      }
+
+      .ps-page.embedded-mode {
+        padding: 0.75rem;
+      }
+
+      .ps-header h1 {
+        font-size: 2rem;
+      }
+
       .ps-search {
         grid-template-columns: 1fr;
+        gap: 0.8rem;
       }
 
-      .summary-panel {
+      input, select, button {
+        padding: 0.9rem 1rem;
+      }
+
+      .category-scores {
         grid-template-columns: 1fr;
       }
 
-      .score-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      .category-card {
+        padding: 1.2rem;
       }
 
-      .vitals-grid {
+      .score-badge {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+      }
+
+      .metrics-grid {
         grid-template-columns: 1fr;
       }
 
-      .stats-grid,
-      .panel-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .visual-panel {
+      .audit-sections {
         grid-template-columns: 1fr;
       }
     }
   `]
 })
-export class PageSpeedComponent {
+export class PageSpeedComponent implements OnInit, OnChanges {
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly api = getApiBaseUrl();
+
+  @Input() embedded = false;
+  @Input() presetUrl = '';
+  @Input() autoAnalyzeToken = 0;
+
+  @HostBinding('class.embedded')
+  get embeddedClass(): boolean {
+    return this.embedded;
+  }
 
   url = 'https://seo-ia123.vercel.app/';
   strategy: 'mobile' | 'desktop' = 'mobile';
@@ -673,7 +925,29 @@ export class PageSpeedComponent {
   errorMessage = '';
   result: LocalPageSpeedResponse | null = null;
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.applyPresetUrl();
+    if (this.autoAnalyzeToken > 0) {
+      void this.analyze();
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['presetUrl']) {
+      this.applyPresetUrl();
+    }
+
+    if (changes['autoAnalyzeToken'] && !changes['autoAnalyzeToken'].firstChange) {
+      void this.analyze();
+    }
+  }
+
+  private applyPresetUrl(): void {
+    const nextUrl = this.presetUrl?.trim();
+    if (nextUrl) {
+      this.url = nextUrl;
+    }
+  }
 
   async analyze(): Promise<void> {
     this.errorMessage = '';

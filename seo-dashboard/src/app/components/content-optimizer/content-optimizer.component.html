@@ -1,5 +1,5 @@
-<div class="content-optimizer-page">
-  <aside class="sidebar">
+<div class="content-optimizer-page" [class.embedded-mode]="embedded">
+  <aside class="sidebar" *ngIf="!embedded">
     <div class="sidebar-header">
       <div class="logo">
         <span class="logo-text">#SEO-IA</span>

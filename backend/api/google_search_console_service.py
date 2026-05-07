@@ -24,13 +24,20 @@ class GoogleSearchConsoleService:
         )
 
         self.service = build('webmasters', 'v3', credentials=self.credentials)
+        # Prepare an alternate site identifier for Domain properties (sc-domain:)
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(self.site_url or '')
+            netloc = parsed.netloc or ''
+            if netloc:
+                self.alt_site_url = f'sc-domain:{netloc}'
+            else:
+                self.alt_site_url = None
+        except Exception:
+            self.alt_site_url = None
 
     def _get_date_range(self, days=30, mode="period"):
         end_date = datetime.now().date()
-        
-        # Convertir 30 jours en 28 jours pour GSC (comme demandé)
-        if days == 30:
-            days = 28
         
         if mode == "today":
             start_date = end_date
@@ -52,7 +59,24 @@ class GoogleSearchConsoleService:
             body=body,
         )
         response = request.execute()
-        return response.get('rows', [])
+        rows = response.get('rows', [])
+
+        # If no rows returned and we have an alternate sc-domain property, try it as a fallback.
+        if (not rows) and getattr(self, 'alt_site_url', None):
+            try:
+                alt_request = self.service.searchanalytics().query(
+                    siteUrl=self.alt_site_url,
+                    body=body,
+                )
+                alt_response = alt_request.execute()
+                alt_rows = alt_response.get('rows', [])
+                if alt_rows:
+                    return alt_rows
+            except Exception:
+                # Ignore fallback errors and return original rows
+                pass
+
+        return rows
 
     def _hourly_today_rows(self):
         # Keep the dashboard "24h" mode aligned with today's Search Console data
@@ -123,15 +147,15 @@ class GoogleSearchConsoleService:
             return self._aggregate_metrics(rows)
 
         start_date, end_date = self._get_date_range(days, mode)
-        return self._aggregate_metrics(
-            self._fetch_rows(
-                {
-                    'startDate': start_date.isoformat(),
-                    'endDate': end_date.isoformat(),
-                    'metrics': ['clicks', 'impressions', 'ctr', 'position'],
-                }
-            )
+        rows = self._fetch_rows(
+            {
+                'startDate': start_date.isoformat(),
+                'endDate': end_date.isoformat(),
+                'metrics': ['clicks', 'impressions', 'ctr', 'position'],
+            }
         )
+        result = self._aggregate_metrics(rows)
+        return result
 
     def get_top_queries(self, limit=20, days=30, mode="period"):
         if self._is_hourly_today_mode(mode):

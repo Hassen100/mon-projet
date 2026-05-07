@@ -1,0 +1,86 @@
+<div class="ai-assistant-shell">
+	<div class="ai-assistant-container">
+		<header class="ai-header">
+			<h1>✨ AI Assistant SEO</h1>
+			<p class="subtitle">Expert SEO | Gemini 2.5 Flash | Analyse temps réel</p>
+		</header>
+
+		<div class="ai-content">
+			<section class="messages-section">
+				<div class="messages-container" #messagesContainer>
+					<div
+						class="message"
+						*ngFor="let msg of messages.slice(0, messages.length - 1)"
+						[class.message-user]="msg.role === 'user'"
+						[class.message-assistant]="msg.role === 'assistant'"
+						[class.loading]="msg.isLoading"
+					>
+						<div class="message-bubble">{{ msg.content }}</div>
+						<div class="message-time">{{ msg.timestamp | date:'HH:mm' }}</div>
+					</div>
+					<div
+						class="message"
+						*ngIf="messages.length > 0"
+						[class.message-user]="messages[messages.length-1].role === 'user'"
+						[class.message-assistant]="messages[messages.length-1].role === 'assistant'"
+						[class.loading]="messages[messages.length-1].isLoading"
+					>
+						<div class="message-bubble" [innerHTML]="formatMessage(messages[messages.length-1].content)"></div>
+						<div class="message-time">{{ messages[messages.length-1].timestamp | date:'HH:mm' }}</div>
+					</div>
+				</div>
+
+				<div class="quick-analysis-panel" *ngIf="quickAnalysis?.dashboard_stats as stats">
+					<h3>Contexte rapide</h3>
+					<div class="stats-grid">
+						<div class="stat-item">
+							<span class="stat-label">Sessions</span>
+							<span class="stat-value">{{ stats.sessions || 0 }}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-label">Rebond</span>
+							<span class="stat-value">{{ (stats.bounce_rate || 0) | number:'1.0-1' }}%</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-label">Clics SEO</span>
+							<span class="stat-value">{{ stats.search_clicks || 0 }}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-label">Position</span>
+							<span class="stat-value">{{ (stats.avg_position || 0) | number:'1.0-1' }}</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="input-section">
+				<div class="suggestions">
+					<button type="button" class="suggestion-btn" [disabled]="isLoading" (click)="suggestQuestion('Quelles pages ont le plus de problemes SEO ?')">📄 Pages à problème</button>
+					<button type="button" class="suggestion-btn" [disabled]="isLoading" (click)="suggestQuestion('Quelles sont mes meilleures opportunites de mots-cles ?')">🔎 Mots-clés quick win</button>
+					<button type="button" class="suggestion-btn" [disabled]="isLoading" (click)="suggestQuestion('Detecte les anomalies de trafic recentes')">📉 Anomalies trafic</button>
+					<button type="button" class="suggestion-btn" [disabled]="isLoading" (click)="suggestQuestion('Quelles optimisations techniques prioriser ?')">⚙️ Optimisation tech</button>
+				</div>
+
+				<div class="input-area">
+					<textarea
+						class="message-input"
+						[(ngModel)]="userInput"
+						[disabled]="isLoading"
+						rows="2"
+						placeholder="Posez votre question... (Shift+Entrée pour saut de ligne)"
+						(keydown)="handleKeyPress($event)"
+					></textarea>
+
+					<div class="input-actions">
+						<button type="button" class="btn-send" [class.loading]="isLoading" [disabled]="isLoading || !userInput.trim()" (click)="sendMessage()">
+							{{ isLoading ? 'Analyse...' : 'Envoyer ➜' }}
+						</button>
+						<button type="button" class="btn-clear" [disabled]="isLoading" (click)="clear()">↺</button>
+					</div>
+				</div>
+
+				<p class="help-text">💡 Conseil : Posez vos questions le plus librement possible. L'IA identifiera les opportunités SEO.</p>
+			</section>
+		</div>
+	</div>
+</div>

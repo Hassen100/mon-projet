@@ -1,4 +1,4 @@
-import { CommonModule, NgComponentOutlet, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, inject, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import { Chart, registerables } from 'chart.js';
@@ -13,7 +13,27 @@ import {
   SearchDailyData,
 } from '../../services/analytics.service';
 import { CurlService } from '../../services/curl.service';
-import { CurlModalComponent } from '../curl-modal/curl-modal.component';
+
+const allowedDashboardUrl = 'https://seo-ia123.vercel.app/';
+const analysisGateKey = 'analysis_target_url';
+
+function normalizeAnalysisUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname !== '/' || parsed.search || parsed.hash) {
+      return '';
+    }
+
+    return `${parsed.origin}/`;
+  } catch {
+    return '';
+  }
+}
 
 interface TopPage {
   page_path: string;
@@ -59,7 +79,7 @@ Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgComponentOutlet, PageSpeedComponent, ContentOptimizerComponent],
+  imports: [CommonModule, FormsModule, PageSpeedComponent, ContentOptimizerComponent, AiAssistantComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -76,15 +96,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   keywordsChart?: Chart;
   bounceChart?: Chart;
 
-  sessions = 0;
-  users = 0;
-  pageViews = 0;
-  bounceRate = 0;
-  avgSessionDuration = 0;
-  searchClicks = 0;
-  searchImpressions = 0;
-  searchCtr = 0;
-  searchPosition = 0;
+  sessions: number | null = null;
+  users: number | null = null;
+  pageViews: number | null = null;
+  bounceRate: number | null = null;
+  avgSessionDuration: number | null = null;
+  searchClicks: number | null = null;
+  searchImpressions: number | null = null;
+  searchCtr: number | null = null;
+  searchPosition: number | null = null;
 
   topPages: TopPage[] = [];
   topKeywords: TopKeyword[] = [];
@@ -107,7 +127,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   showCurlModal = false;
   userToken = '';
   activeWorkspace: 'none' | 'pagespeed' | 'content-optimizer' | 'ai-assistant' = 'none';
-  analysisTargetUrl = 'https://seo-ia123.vercel.app/';
+  pagespeedAutoAnalyzeToken = 0;
+  contentOptimizerAutoRefreshToken = 0;
+  analysisTargetUrl = '';
+  analysisUrlInput = '';
+  analysisErrorMessage = '';
+  analysisSuccessMessage = '';
+  hasValidAnalysisUrl = false;
   readonly aiAssistantComponent = AiAssistantComponent;
   private recommendationsTimer?: number;
 
@@ -124,15 +150,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadUserData();
-      const savedUrl = sessionStorage.getItem('analysis_target_url');
-      if (savedUrl) {
-        this.analysisTargetUrl = savedUrl;
+      const savedUrl = sessionStorage.getItem(analysisGateKey) || '';
+      const normalizedSavedUrl = normalizeAnalysisUrl(savedUrl);
+      if (normalizedSavedUrl === allowedDashboardUrl) {
+        this.analysisUrlInput = normalizedSavedUrl;
+        this.analysisTargetUrl = normalizedSavedUrl;
+        this.hasValidAnalysisUrl = true;
+      } else {
+        sessionStorage.removeItem(analysisGateKey);
+        this.resetAnalyticsState();
       }
     }
   }
 
   ngOnInit() {
-    this.refreshDashboard(false);
+    this.activeWorkspace = 'none';
+    if (this.hasValidAnalysisUrl) {
+      this.refreshDashboard(false);
+    }
   }
 
   ngAfterViewInit() {}
@@ -166,7 +201,93 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.selectedMode === 'period' ? this.selectedPeriod : 1;
   }
 
+  private resetAnalyticsState(): void {
+    this.sessions = null;
+    this.users = null;
+    this.pageViews = null;
+    this.bounceRate = null;
+    this.avgSessionDuration = null;
+    this.searchClicks = null;
+    this.searchImpressions = null;
+    this.searchCtr = null;
+    this.searchPosition = null;
+
+    this.topPages = [];
+    this.topKeywords = [];
+    this.trafficData = [];
+    this.searchData = [];
+    this.recommendationCategories = [];
+    this.isLoadingKPIs = false;
+    this.isLoadingPages = false;
+    this.isLoadingKeywords = false;
+    this.isLoadingSearchConsole = false;
+    this.isLoadingRecommendations = false;
+
+    this.destroyCharts();
+  }
+
+  private setAnalysisGateState(validatedUrl: string | null): void {
+    if (validatedUrl) {
+      this.hasValidAnalysisUrl = true;
+      this.analysisTargetUrl = validatedUrl;
+      this.analysisUrlInput = validatedUrl;
+      this.analysisErrorMessage = '';
+      this.analysisSuccessMessage = 'URL validée. Les données du dashboard sont chargées.';
+
+      if (isPlatformBrowser(this.platformId)) {
+        sessionStorage.setItem(analysisGateKey, validatedUrl);
+      }
+
+      return;
+    }
+
+    this.hasValidAnalysisUrl = false;
+    this.analysisTargetUrl = '';
+    this.analysisErrorMessage = 'Saisissez exactement https://seo-ia123.vercel.app/ pour afficher les données.';
+    this.analysisSuccessMessage = '';
+
+    if (isPlatformBrowser(this.platformId)) {
+      sessionStorage.removeItem(analysisGateKey);
+    }
+
+    this.resetAnalyticsState();
+  }
+
+  onAnalysisUrlInputChange(value: string): void {
+    this.analysisUrlInput = value;
+    const normalized = normalizeAnalysisUrl(value);
+
+    if (normalized === allowedDashboardUrl) {
+      this.analysisErrorMessage = '';
+      return;
+    }
+
+    if (this.hasValidAnalysisUrl) {
+      this.setAnalysisGateState(null);
+    } else {
+      this.analysisErrorMessage = '';
+      this.analysisSuccessMessage = '';
+    }
+  }
+
+  analyzeUrl(): void {
+    const normalized = normalizeAnalysisUrl(this.analysisUrlInput);
+
+    if (normalized !== allowedDashboardUrl) {
+      this.setAnalysisGateState(null);
+      return;
+    }
+
+    this.setAnalysisGateState(normalized);
+    this.refreshDashboard(true);
+  }
+
   refreshDashboard(refreshFromGoogle: boolean = false): void {
+    if (!this.hasValidAnalysisUrl) {
+      this.resetAnalyticsState();
+      return;
+    }
+
     this.updateKPIs(refreshFromGoogle);
     this.loadSearchConsole(refreshFromGoogle);
     this.loadTopPages(refreshFromGoogle);
@@ -174,14 +295,19 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   updateKPIs(refreshFromGoogle: boolean = false): void {
+    if (!this.hasValidAnalysisUrl) {
+      this.resetAnalyticsState();
+      return;
+    }
+
     this.isLoadingKPIs = true;
     this.analyticsService.getAnalyticsSummary(this.getEffectiveDays(), this.selectedMode, refreshFromGoogle, this.userId).subscribe({
       next: (data: any) => {
-        this.sessions = data.sessions || 0;
-        this.users = data.users || 0;
-        this.pageViews = data.page_views || 0;
-        this.bounceRate = data.bounce_rate || 0;
-        this.avgSessionDuration = data.avg_session_duration || 0;
+        this.sessions = data.sessions ?? 0;
+        this.users = data.users ?? 0;
+        this.pageViews = data.page_views ?? 0;
+        this.bounceRate = data.bounce_rate ?? 0;
+        this.avgSessionDuration = data.avg_session_duration ?? 0;
         this.isLoadingKPIs = false;
         this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
@@ -198,11 +324,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadSearchConsole(refreshFromGoogle: boolean = false): void {
+    if (!this.hasValidAnalysisUrl) {
+      this.searchClicks = null;
+      this.searchImpressions = null;
+      this.searchCtr = null;
+      this.searchPosition = null;
+      this.searchData = [];
+      this.createSearchConsoleChart();
+      return;
+    }
+
     if (!this.userId) {
-      this.searchClicks = 0;
-      this.searchImpressions = 0;
-      this.searchCtr = 0;
-      this.searchPosition = 0;
+      this.searchClicks = null;
+      this.searchImpressions = null;
+      this.searchCtr = null;
+      this.searchPosition = null;
       this.searchData = [];
       this.createSearchConsoleChart();
       return;
@@ -212,20 +348,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.analyticsService.getSearchSummary(this.userId, this.getEffectiveDays(), refreshFromGoogle, this.selectedMode).subscribe({
       next: (data) => {
         const summary = this.resolveSearchSummary(data);
-        this.searchClicks = summary.clicks || 0;
-        this.searchImpressions = summary.impressions || 0;
-        this.searchCtr = summary.ctr || 0;
-        this.searchPosition = summary.position || 0;
+        this.searchClicks = summary.clicks ?? 0;
+        this.searchImpressions = summary.impressions ?? 0;
+        this.searchCtr = summary.ctr ?? 0;
+        this.searchPosition = summary.position ?? 0;
         this.scheduleRecommendationsUpdate();
         this.cdr.detectChanges();
         this.loadSearchConsoleChart();
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement de Google Search Console:', error);
-        this.searchClicks = 0;
-        this.searchImpressions = 0;
-        this.searchCtr = 0;
-        this.searchPosition = 0;
+        this.searchClicks = null;
+        this.searchImpressions = null;
+        this.searchCtr = null;
+        this.searchPosition = null;
         this.searchData = [];
         this.isLoadingSearchConsole = false;
         this.scheduleRecommendationsUpdate();
@@ -307,7 +443,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private scheduleRecommendationsUpdate(): void {
-    if (!this.userToken || this.sessions <= 0) {
+    if (!this.userToken || this.sessions === null || this.sessions <= 0) {
       this.recommendationCategories = [];
       this.isLoadingRecommendations = false;
       return;
@@ -323,7 +459,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updateRecommendations(): void {
-    if (!this.userToken || this.sessions <= 0) {
+    if (!this.userToken || this.sessions === null || this.sessions <= 0) {
       this.recommendationCategories = [];
       this.isLoadingRecommendations = false;
       return;
@@ -332,12 +468,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isLoadingRecommendations = true;
     this.analyticsService.getPageRecommendations({
       url: this.topPages[0]?.page_path || '/',
-      bounce_rate: this.bounceRate || 0,
-      avg_duration: this.formatDuration(this.avgSessionDuration),
-      sessions: this.sessions || 0,
-      position: this.searchPosition || this.topKeywords[0]?.position || null,
-      impressions: this.searchImpressions || 0,
-      ctr: this.searchCtr || 0,
+      bounce_rate: this.bounceRate ?? 0,
+      avg_duration: this.formatDuration(this.avgSessionDuration ?? 0),
+      sessions: this.sessions ?? 0,
+      position: (this.searchPosition ?? this.topKeywords[0]?.position) || null,
+      impressions: this.searchImpressions ?? 0,
+      ctr: this.searchCtr ?? 0,
     }).subscribe({
       next: (response: PageRecommendationResponse) => {
         const items = response.recommendations || [];
@@ -366,7 +502,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         subtitle: 'Taux de rebond, durée, trafic entrant',
         icon: '📄',
         items: pageIssues.length ? pageIssues : [
-          `Surveillez ${this.topPages[0]?.page_path || '/'} si le rebond reste à ${this.bounceRate}%.`
+          `Surveillez ${this.topPages[0]?.page_path || '/'} si le rebond reste à ${this.bounceRate ?? 0}%.`
         ],
       },
       {
@@ -374,7 +510,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         subtitle: 'Positions, impressions, CTR',
         icon: '🎯',
         items: keywordOpportunities.length ? keywordOpportunities : [
-          `Optimisez le snippet si la position moyenne est ${this.searchPosition || 0} avec ${this.searchImpressions || 0} impressions.`
+          `Optimisez le snippet si la position moyenne est ${this.searchPosition ?? 0} avec ${this.searchImpressions ?? 0} impressions.`
         ],
       },
       {
@@ -382,7 +518,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         subtitle: 'Évolution des sessions (GA4)',
         icon: '📉',
         items: trafficAnomalies.length ? trafficAnomalies : [
-          `Contrôlez l'évolution des ${this.sessions} sessions sur ${this.getEffectiveDays()} jours pour détecter une anomalie.`
+          `Contrôlez l'évolution des ${this.sessions ?? 0} sessions sur ${this.getEffectiveDays()} jours pour détecter une anomalie.`
         ],
       },
       {
@@ -440,7 +576,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       this.selectedMode = 'period';
     }
-    this.refreshDashboard(false);
+    if (this.hasValidAnalysisUrl) {
+      this.refreshDashboard(false);
+    }
   }
 
   toggleAuthUsers(): void {
@@ -458,7 +596,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     localStorage.removeItem('user_is_admin');
     localStorage.removeItem('user_is_superuser');
     localStorage.removeItem('user_id');
-    sessionStorage.removeItem('analysis_target_url');
+    sessionStorage.removeItem(analysisGateKey);
     this.router.navigate(['/login']);
   }
 
@@ -485,36 +623,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openAiAssistant(): void {
     this.activeWorkspace = 'ai-assistant';
-    this.scrollToEmbeddedWorkspace();
   }
 
   openPageSpeed(): void {
+    this.pagespeedAutoAnalyzeToken += 1;
     this.activeWorkspace = 'pagespeed';
-    this.scrollToEmbeddedWorkspace();
   }
 
   openContentOptimizer(): void {
+    this.contentOptimizerAutoRefreshToken += 1;
     this.activeWorkspace = 'content-optimizer';
-    this.scrollToEmbeddedWorkspace();
   }
 
   openOverview(): void {
     this.activeWorkspace = 'none';
-  }
-
-  private scrollToEmbeddedWorkspace(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-
-    window.setTimeout(() => {
-      const target = document.getElementById('embedded-workspace');
-      if (!target) {
-        return;
-      }
-
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 60);
   }
 
   initializeCharts(): void {
@@ -526,6 +648,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadTrafficChart(): void {
+    if (!this.hasValidAnalysisUrl) {
+      this.trafficData = [];
+      this.createTrafficChart();
+      return;
+    }
+
     if (!this.userId) {
       this.trafficData = [];
       this.createTrafficChart();
@@ -546,6 +674,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadSearchConsoleChart(): void {
+    if (!this.hasValidAnalysisUrl) {
+      this.searchData = [];
+      this.isLoadingSearchConsole = false;
+      this.createSearchConsoleChart();
+      return;
+    }
+
     if (!this.userId) {
       this.searchData = [];
       this.isLoadingSearchConsole = false;

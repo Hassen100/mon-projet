@@ -49,6 +49,30 @@
         <h1 class="page-title">Dashboard Overview</h1>
         <p class="page-description">Vue d'ensemble des performances SEO et du trafic organique</p>
       </div>
+
+      <div class="header-center">
+        <div class="analysis-gate">
+          <label for="dashboard-target-url">URL du site</label>
+          <div class="analysis-gate-row">
+            <input
+              id="dashboard-target-url"
+              name="dashboardTargetUrl"
+              type="url"
+              [ngModel]="analysisUrlInput"
+              (ngModelChange)="onAnalysisUrlInputChange($event)"
+              placeholder="https://seo-ia123.vercel.app/"
+              autocomplete="url"
+            />
+            <button type="button" class="analysis-submit-btn" (click)="analyzeUrl()" [disabled]="isLoadingKPIs || isLoadingSearchConsole || isLoadingRecommendations">
+              Analyser
+            </button>
+          </div>
+          <p class="analysis-hint">URL attendue: <strong>https://seo-ia123.vercel.app/</strong></p>
+          <p class="analysis-message error" *ngIf="analysisErrorMessage">{{ analysisErrorMessage }}</p>
+          <p class="analysis-message success" *ngIf="analysisSuccessMessage">{{ analysisSuccessMessage }}</p>
+        </div>
+      </div>
+
       <div class="header-right">
         <button
           *ngIf="isSuperUser"
@@ -76,7 +100,29 @@
       </div>
     </header>
 
-    <section class="kpi-section">
+    <section id="embedded-workspace" class="embedded-workspace" *ngIf="activeWorkspace === 'pagespeed' || activeWorkspace === 'content-optimizer'">
+      <div class="embedded-workspace-head">
+        <h2 *ngIf="activeWorkspace === 'pagespeed'">PageSpeed dans le dashboard</h2>
+        <h2 *ngIf="activeWorkspace === 'content-optimizer'">Content Optimizer dans le dashboard</h2>
+        <button type="button" class="embedded-back-btn" (click)="openOverview()">Fermer</button>
+      </div>
+
+      <app-pagespeed
+        *ngIf="activeWorkspace === 'pagespeed'"
+        [embedded]="true"
+        [presetUrl]="analysisTargetUrl"
+        [autoAnalyzeToken]="pagespeedAutoAnalyzeToken">
+      </app-pagespeed>
+
+      <app-content-optimizer
+        *ngIf="activeWorkspace === 'content-optimizer'"
+        [embedded]="true"
+        [presetTargetUrl]="analysisTargetUrl"
+        [autoRefreshToken]="contentOptimizerAutoRefreshToken">
+      </app-content-optimizer>
+    </section>
+
+    <section class="kpi-section" *ngIf="activeWorkspace === 'none'">
       <div class="overview-banner">
         <div class="overview-copy">
           <span class="overview-chip">Vue executive</span>
@@ -85,15 +131,15 @@
         <div class="overview-metrics">
           <div class="overview-metric">
             <span class="overview-label">Sessions</span>
-            <strong>{{ sessions }}</strong>
+            <strong>{{ sessions === null ? 0 : sessions }}</strong>
           </div>
           <div class="overview-metric">
             <span class="overview-label">Users</span>
-            <strong>{{ users }}</strong>
+            <strong>{{ users === null ? 0 : users }}</strong>
           </div>
           <div class="overview-metric">
             <span class="overview-label">Pages vues</span>
-            <strong>{{ pageViews }}</strong>
+            <strong>{{ pageViews === null ? 0 : pageViews }}</strong>
           </div>
         </div>
       </div>
@@ -115,7 +161,7 @@
             <span class="kpi-icon">👥</span>
             <span class="kpi-title">Sessions</span>
           </div>
-          <div class="kpi-value">{{ sessions }}</div>
+          <div class="kpi-value">{{ sessions === null ? 0 : sessions }}</div>
           <div class="kpi-change positive">Google Analytics</div>
         </div>
 
@@ -124,7 +170,7 @@
             <span class="kpi-icon">👤</span>
             <span class="kpi-title">Utilisateurs</span>
           </div>
-          <div class="kpi-value">{{ users }}</div>
+          <div class="kpi-value">{{ users === null ? 0 : users }}</div>
           <div class="kpi-change positive">Google Analytics</div>
         </div>
 
@@ -133,7 +179,7 @@
             <span class="kpi-icon">📄</span>
             <span class="kpi-title">Pages vues</span>
           </div>
-          <div class="kpi-value">{{ pageViews }}</div>
+          <div class="kpi-value">{{ pageViews === null ? 0 : pageViews }}</div>
           <div class="kpi-change positive">Google Analytics</div>
         </div>
 
@@ -142,7 +188,7 @@
             <span class="kpi-icon">📊</span>
             <span class="kpi-title">Taux de rebond</span>
           </div>
-          <div class="kpi-value">{{ bounceRate }}%</div>
+          <div class="kpi-value">{{ bounceRate === null ? 0 : bounceRate + '%' }}</div>
           <div class="kpi-change positive">Google Analytics</div>
         </div>
       </div>
@@ -156,19 +202,19 @@
         <div class="search-console-metrics">
           <div class="search-console-metric">
             <span class="search-console-label">Clics</span>
-            <strong>{{ searchClicks }}</strong>
+            <strong>{{ searchClicks === null ? 0 : searchClicks }}</strong>
           </div>
           <div class="search-console-metric">
             <span class="search-console-label">Impressions</span>
-            <strong>{{ searchImpressions }}</strong>
+            <strong>{{ searchImpressions === null ? 0 : searchImpressions }}</strong>
           </div>
           <div class="search-console-metric">
             <span class="search-console-label">CTR moyen</span>
-            <strong>{{ searchCtr }}%</strong>
+            <strong>{{ searchCtr === null ? 0 : searchCtr + '%' }}</strong>
           </div>
           <div class="search-console-metric">
             <span class="search-console-label">Position moyenne</span>
-            <strong>{{ searchPosition }}</strong>
+            <strong>{{ searchPosition === null ? 0 : searchPosition }}</strong>
           </div>
         </div>
       </div>
@@ -207,7 +253,7 @@
       </div>
     </section>
 
-    <section class="charts-section">
+    <section class="charts-section" *ngIf="activeWorkspace === 'none'">
       <div class="charts-grid">
         <div class="chart-card">
           <div class="chart-header">
@@ -290,7 +336,16 @@
       </div>
     </section>
 
-    <section class="auth-users-section" *ngIf="isSuperUser && showAuthUsers">
+    <section class="embedded-workspace ai-assistant-workspace" *ngIf="activeWorkspace === 'ai-assistant'">
+      <div class="embedded-workspace-head">
+        <h2>AI Assistant dans le dashboard</h2>
+        <button type="button" class="embedded-back-btn" (click)="openOverview()">Fermer</button>
+      </div>
+
+      <app-ai-assistant [embedded]="true"></app-ai-assistant>
+    </section>
+
+    <section class="auth-users-section" *ngIf="activeWorkspace === 'none' && isSuperUser && showAuthUsers">
       <div class="auth-users-card">
         <div class="card-header">
           <h3>Utilisateurs authentifiés</h3>
@@ -327,27 +382,5 @@
       </div>
     </section>
 
-    <section id="embedded-workspace" class="embedded-workspace" *ngIf="activeWorkspace !== 'none'">
-      <div class="embedded-workspace-head">
-        <h2 *ngIf="activeWorkspace === 'pagespeed'">PageSpeed dans le dashboard</h2>
-        <h2 *ngIf="activeWorkspace === 'content-optimizer'">Content Optimizer dans le dashboard</h2>
-        <h2 *ngIf="activeWorkspace === 'ai-assistant'">AI Assistant dans le dashboard</h2>
-        <button type="button" class="embedded-back-btn" (click)="openOverview()">Fermer</button>
-      </div>
-
-      <app-pagespeed
-        *ngIf="activeWorkspace === 'pagespeed'"
-        [embedded]="true"
-        [presetUrl]="analysisTargetUrl">
-      </app-pagespeed>
-
-      <app-content-optimizer
-        *ngIf="activeWorkspace === 'content-optimizer'"
-        [embedded]="true"
-        [presetTargetUrl]="analysisTargetUrl">
-      </app-content-optimizer>
-
-      <ng-container *ngIf="activeWorkspace === 'ai-assistant'" [ngComponentOutlet]="aiAssistantComponent"></ng-container>
-    </section>
   </main>
 </div>

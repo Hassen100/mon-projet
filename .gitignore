@@ -9,3 +9,32 @@ backend/**/__pycache__/
 seo-dashboard/node_modules/
 seo-dashboard/.angular/
 seo-dashboard/dist/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+backend/.venv/
+seo-dashboard/.venv/
+
+# Environment files
+.env
+backend/.env
+!.env.example
+!backend/.env.example
+
+# Logs and diagnostics
+*.log
+*.out.log
+*.err.log
+.codex-logs/
+
+# Test and tool caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build artefacts
+build/
+dist/

@@ -10,6 +10,20 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+.content-optimizer-page.embedded-mode {
+  min-height: auto;
+  grid-template-columns: 1fr minmax(320px, 36vw);
+  border-radius: 12px;
+}
+
+.content-optimizer-page.embedded-mode .content-area {
+  padding: 1rem;
+}
+
+.content-optimizer-page.embedded-mode .content-shell {
+  max-width: none;
+}
+
 .sidebar {
   width: 280px;
   background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
@@ -389,6 +403,10 @@ tbody tr:hover {
 
 .detail-panel.open {
   transform: translateX(0);
+}
+
+.content-optimizer-page.embedded-mode .detail-panel {
+  background: rgba(7, 16, 30, 0.95);
 }
 
 .detail-header {

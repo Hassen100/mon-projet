@@ -48,9 +48,11 @@ class OllamaService:
             'seo', 'trafic', 'traffic', 'session', 'sessions', 'rebond', 'bounce',
             'position', 'serp', 'ctr', 'impression', 'impressions', 'clic', 'clicks',
             'analytics', 'search console', 'gsc', 'ga4', 'mot-cl', 'keyword',
+            'mots-cles', 'mot cle', 'mots cles', 'opportunite', 'opportunites',
             'requete', 'requêtes', 'conversion', 'backlink', 'maillage', 'crawl',
             'indexation', 'sitemap', 'robots', 'balise', 'meta', 'title', 'h1',
-            'h2', 'contenu', 'page', 'pages', 'core web vitals', 'vitesse'
+            'h2', 'contenu', 'page', 'pages', 'core web vitals', 'vitesse',
+            'problemes seo', 'technique', 'optimisation technique', 'optimisations techniques'
         }
         return any(marker in text for marker in seo_markers)
 
@@ -170,6 +172,119 @@ Reponse:"""
             "- Meilleure priorisation des actions SEO selon les pages et requetes les plus prometteuses.\n\n"
             f"Contexte de la question: {question}"
         )
+
+    def _fast_dashboard_answer(self, context: dict, question: str) -> str | None:
+        text = (question or '').strip().lower()
+        ga = context.get('analytics', {})
+        gsc = context.get('search_console', {})
+        top_pages = ga.get('top_pages', []) or []
+        top_queries = context.get('top_queries', []) or []
+
+        if (
+            ('rebond' in text and ('page' in text or 'pages' in text))
+            or ('problemes seo' in text)
+            or ('pages problem' in text)
+        ):
+            top_page = top_pages[0] if top_pages else None
+            top_page_label = top_page.get('page') if top_page else 'Donnee non disponible'
+            top_page_views = int(top_page.get('views', 0) or 0) if top_page else 0
+            bounce = float(ga.get('avg_bounce_rate', 0) or 0)
+            return (
+                "OBSERVATION:\n"
+                f"- Le taux de rebond disponible est global: {bounce:.1f}%.\n"
+                f"- La page la plus vue sur la periode est {top_page_label} avec {top_page_views} vues.\n"
+                "- Le dashboard actuel ne contient pas un taux de rebond detaille par page.\n\n"
+                "PROBLEME:\n"
+                "- Impossible d'identifier de facon fiable la page au rebond le plus eleve avec les donnees actuelles.\n\n"
+                "ACTION:\n"
+                f"- Auditer en priorite la page {top_page_label} car elle concentre le plus de trafic.\n"
+                "- Ajouter un indicateur de taux de rebond par page dans les donnees exposees a l'assistant.\n"
+                "- Comparer contenu, vitesse et intention de recherche des pages d'entree principales.\n\n"
+                "RESULTAT ATTENDU:\n"
+                "- Une identification fiable des pages a corriger en premier.\n"
+                "- Une baisse du rebond sur les pages qui captent deja le plus de visites."
+            )
+
+        if (
+            'anomal' in text
+            and ('trafic' in text or 'traffic' in text or 'session' in text)
+        ):
+            sessions = int(ga.get('total_sessions', 0) or 0)
+            users = int(ga.get('total_users', 0) or 0)
+            clicks = int(gsc.get('total_clicks', 0) or 0)
+            impressions = int(gsc.get('total_impressions', 0) or 0)
+            return (
+                "OBSERVATION:\n"
+                f"- Sessions observees: {sessions}.\n"
+                f"- Utilisateurs observes: {users}.\n"
+                f"- Search Console: {clicks} clics pour {impressions} impressions.\n\n"
+                "PROBLEME:\n"
+                "- Le contexte agrege ne montre pas a lui seul une anomalie journaliere certaine.\n"
+                "- Une anomalie doit etre verifiee sur une courbe date par date, pas seulement sur un total.\n\n"
+                "ACTION:\n"
+                "- Verifier le graphe des sessions sur la periode et isoler les jours de rupture.\n"
+                "- Comparer les pages d'entree principales avant/apres la baisse ou la hausse.\n"
+                "- Croiser les variations avec les clics Search Console et les changements techniques recents.\n\n"
+                "RESULTAT ATTENDU:\n"
+                "- Detection plus fiable d'une baisse ou hausse anormale.\n"
+                "- Priorisation plus rapide des verifications SEO ou techniques."
+            )
+
+        if (
+            ('action' in text and 'seo' in text)
+            or ('mot' in text and 'cle' in text)
+            or ('keyword' in text)
+            or ('opportunit' in text and ('seo' in text or 'mot' in text))
+        ):
+            top_page = top_pages[0] if top_pages else None
+            top_query = top_queries[0] if top_queries else None
+            top_page_label = top_page.get('page') if top_page else 'votre page principale'
+            top_query_label = top_query.get('query') if top_query else 'vos requetes les plus visibles'
+            ctr = float(gsc.get('avg_ctr', 0) or 0)
+            position = float(gsc.get('avg_position', 0) or 0)
+            return (
+                "OBSERVATION:\n"
+                f"- La page la plus visible actuellement est {top_page_label}.\n"
+                f"- La requete la plus exploitable semble etre {top_query_label}.\n"
+                f"- CTR moyen: {ctr:.2f}% ; position moyenne: {position:.1f}.\n\n"
+                "PROBLEME:\n"
+                "- Les opportunites SEO ne sont pas encore transformeess en clics de maniere optimale.\n"
+                "- Les pages les plus vues meritent d'etre optimisees en premier pour maximiser le gain rapide.\n\n"
+                "ACTION:\n"
+                f"- Optimiser en premier {top_page_label}: title, meta description, H1 et maillage interne.\n"
+                f"- Renforcer un contenu cible autour de {top_query_label} avec une intention de recherche precise.\n"
+                "- Suivre chaque semaine impressions, CTR et position des pages d'entree principales.\n\n"
+                "RESULTAT ATTENDU:\n"
+                "- Hausse du CTR sur les pages deja visibles.\n"
+                "- Meilleure priorisation des quick wins SEO sur la periode suivante."
+            )
+
+        if (
+            'technique' in text
+            or 'optimisation tech' in text
+            or 'optimisations techniques' in text
+        ):
+            top_page = top_pages[0] if top_pages else None
+            top_page_label = top_page.get('page') if top_page else 'la page principale'
+            bounce = float(ga.get('avg_bounce_rate', 0) or 0)
+            return (
+                "OBSERVATION:\n"
+                f"- La page la plus exposee actuellement est {top_page_label}.\n"
+                f"- Le taux de rebond global observe est {bounce:.1f}%.\n"
+                "- Le dashboard ne fournit pas ici de Core Web Vitals detailles par page.\n\n"
+                "PROBLEME:\n"
+                "- Sans priorisation technique, les pages les plus visibles risquent de perdre en engagement et en SEO.\n"
+                "- Les points de performance et de structure ne sont pas encore relies aux pages a plus fort impact.\n\n"
+                "ACTION:\n"
+                f"- Lancer en priorite un audit technique sur {top_page_label}.\n"
+                "- Verifier title, meta description, H1, poids des medias et maillage interne.\n"
+                "- Ajouter PageSpeed/Core Web Vitals dans la boucle de priorisation SEO hebdomadaire.\n\n"
+                "RESULTAT ATTENDU:\n"
+                "- Une meilleure stabilite technique sur les pages les plus importantes.\n"
+                "- Des optimisations SEO plus vite exploitables car reliees au trafic reel."
+            )
+
+        return None
     
     def _is_available(self) -> bool:
         """Vérifier que Ollama est accessible"""
@@ -395,10 +510,37 @@ Reponse:"""
     def analyze_seo_with_context(self, user: User, question: str, days: int = 30) -> str:
         """Mode hybride: chat libre pour messages generaux, SEO structure pour requetes SEO."""
 
-        if self._is_greeting(question) or not self._is_seo_query(question):
+        if self._is_greeting(question):
             return self._generate_general_chat(question)
-        
+
+        normalized_question = (question or '').strip().lower()
+        fast_markers = (
+            'problemes seo',
+            'mots-cles',
+            'mot cle',
+            'mots cles',
+            'opportunite',
+            'opportunites',
+            'anomal',
+            'optimisation technique',
+            'optimisations techniques',
+            'rebond',
+        )
+
+        if any(marker in normalized_question for marker in fast_markers):
+            context = self.get_dashboard_context(user, days)
+            fast_answer = self._fast_dashboard_answer(context, question)
+            if fast_answer:
+                return fast_answer
+
+        if not self._is_seo_query(question):
+            return self._generate_general_chat(question)
+
         context = self.get_dashboard_context(user, days)
+        fast_answer = self._fast_dashboard_answer(context, question)
+        if fast_answer:
+            return fast_answer
+
         ga = context['analytics']
         gsc = context['search_console']
         

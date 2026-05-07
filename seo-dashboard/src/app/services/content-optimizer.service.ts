@@ -82,11 +82,19 @@ export class ContentOptimizerService {
 
     try {
       const parsed = JSON.parse(authData);
-      if (parsed?.token) {
-        headers = headers.set('Authorization', `Token ${parsed.token}`);
+      const parsedToken =
+        typeof parsed === 'string'
+          ? parsed
+          : parsed?.token || parsed?.key || parsed?.authToken || '';
+
+      if (parsedToken) {
+        headers = headers.set('Authorization', `Token ${parsedToken}`);
       }
     } catch {
-      // Ignore malformed local storage auth.
+      const rawToken = authData.trim();
+      if (rawToken) {
+        headers = headers.set('Authorization', `Token ${rawToken}`);
+      }
     }
 
     return headers;
