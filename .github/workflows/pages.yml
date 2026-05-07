@@ -35,7 +35,7 @@ jobs:
 
       - name: Build Angular app
         working-directory: seo-dashboard
-        run: npm run build:github
+        run: CI=false npm run build:github
 
       - name: Add SPA fallback files
         run: |
