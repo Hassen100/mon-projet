@@ -1,0 +1,47 @@
+name: Build and deploy seo-dashboard to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix seo-dashboard
+
+      - name: Build seo-dashboard (static)
+        run: npm run build:static --prefix seo-dashboard
+
+      - name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: seo-dashboard/dist/seo-dashboard
+          branch: gh-pages
+          clean: true
+          commit-message: "chore(pages): deploy seo-dashboard from workflow"
+
+      - name: Ensure Pages uses gh-pages (set source)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/')
+            await github.request('PUT /repos/{owner}/{repo}/pages', {
+              owner, repo,
+              source: { branch: 'gh-pages', path: '/' }
+            })
